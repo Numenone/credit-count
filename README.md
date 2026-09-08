@@ -9,6 +9,20 @@ coaster catalogue, watch their credit count and stats, and can opt in to a publi
 Built for the Koin Limited AI Product Engineer task from the accompanying Statement of Work. See
 [`docs/TDD.md`](docs/TDD.md) for the technical design.
 
+## Live app
+
+**https://credit-count-iota.vercel.app**
+
+| Role       | Email                        | Password             | State                          |
+| ---------- | ---------------------------- | -------------------- | ------------------------------ |
+| Enthusiast | `enthusiast@creditcount.app` | `[rotated, removed from history]` | 18 credits / 23 rides, opted in |
+| Enthusiast | `rival@creditcount.app`      | `[rotated, removed from history]` | 15 credits / 18 rides, opted in |
+| Admin      | `admin@creditcount.app`      | `[rotated, removed from history]`  | 5 credits, **not** opted in     |
+
+The second enthusiast exists so the privacy boundary can be demonstrated rather than described: sign
+in as one and try to reach the other's rides. The admin is deliberately left off the leaderboard —
+toggling it on in Settings shows opt-in working live.
+
 ## Stack
 
 | Layer     | Choice                                                   |
