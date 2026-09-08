@@ -116,6 +116,73 @@ function smoothPath(points: [number, number][], tension = 0.9) {
 
 const TRACK = smoothPath(ANCHORS);
 
+/* ------------------------------------------------------------ ride physics -- */
+
+/**
+ * A speed profile for the train, derived from the track's own elevation.
+ *
+ * A constant-speed lap looks wrong on a coaster: the whole point of the shape is
+ * that gravity trades height for speed. `<animateMotion>` can express that
+ * directly — `keyPoints` says how far along the track you are, `keyTimes` says
+ * when, and the mapping between them IS the speed.
+ *
+ * Speed is taken as proportional to sqrt(drop below the highest point), which is
+ * what conservation of energy gives you, with a floor so the chain lift climbs
+ * steadily instead of stalling at the crest.
+ */
+const SEGMENTS = ANCHORS.slice(1).map(([x, y], i) => {
+  const [px, py] = ANCHORS[i];
+  const length = Math.hypot(x - px, y - py);
+  return {
+    length,
+    midY: (y + py) / 2,
+    // SVG y grows downward, so a positive slope means the track is heading down.
+    slope: length === 0 ? 0 : (y - py) / length,
+  };
+});
+
+const CREST_Y = Math.min(...ANCHORS.map(([, y]) => y));
+const TRACK_LENGTH = SEGMENTS.reduce((total, seg) => total + seg.length, 0);
+
+const RIDE = (() => {
+  const distances = [0];
+  const times = [0];
+  let travelled = 0;
+  let elapsed = 0;
+
+  for (const segment of SEGMENTS) {
+    // Height gives the baseline speed. +20 is the floor: without it the crest
+    // speed goes to zero and the train parks at the top of the lift hill.
+    const fromHeight = Math.sqrt(segment.midY - CREST_Y + 20);
+
+    // Slope then pushes it further either way, which is what actually reads as
+    // "it accelerates down the drop": height alone changes too gradually across
+    // a steep section to be felt.
+    const fromSlope = Math.max(0.6, 1 + 0.55 * segment.slope);
+
+    const speed = fromHeight * fromSlope;
+    travelled += segment.length;
+    elapsed += segment.length / speed;
+    distances.push(travelled);
+    times.push(elapsed);
+  }
+
+  const totalTime = times[times.length - 1];
+  return {
+    fractions: distances.map((d) => d / travelled),
+    keyTimes: times.map((t) => (t / totalTime).toFixed(4)).join(";"),
+  };
+})();
+
+/** Cars are spaced by distance, not by time, so they cannot stretch apart on the drops. */
+const CAR_GAP = 19 / TRACK_LENGTH;
+
+function keyPointsFor(carIndex: number) {
+  return RIDE.fractions
+    .map((f) => Math.min(1, Math.max(0, f - carIndex * CAR_GAP)).toFixed(4))
+    .join(";");
+}
+
 /* --------------------------------------------------------------- skyline -- */
 
 interface Building {
@@ -175,10 +242,30 @@ const STARS = Array.from({ length: 46 }, (_, i) => {
  * the squash was anchored 150 units away and dragged each bird up and down
  * instead of flapping it. Animating the `d` attribute has no origin to get wrong.
  */
-const WING_UP = "M -14 0 q 7 -9 14 0 q 7 -9 14 0";
-const WING_FLAT = "M -14 0 q 7 -2 14 0 q 7 -2 14 0";
-const WING_DOWN = "M -14 0 q 7 5 14 0 q 7 5 14 0";
-const WING_CYCLE = [WING_UP, WING_FLAT, WING_DOWN, WING_FLAT, WING_UP].join(";");
+/**
+ * Each shape is two wings meeting at the body: tip → control → body → control →
+ * tip. Raising the tips while the control points stay low is what makes the wing
+ * bend rather than tilt, which is the difference between a bird and a paper dart.
+ */
+const wings = (tipY: number, bendY: number) =>
+  `M -14 ${tipY} Q -7 ${bendY} 0 0 Q 7 ${bendY} 14 ${tipY}`;
+
+const WING_TOP = wings(-9, -1); // fully raised, ready for the downstroke
+const WING_HIGH = wings(-5, -2);
+const WING_LEVEL = wings(-1, -3);
+const WING_LOW = wings(4, -4); // swept below the body, tips trailing
+
+/**
+ * A real wingbeat is not a sine wave: the downstroke is a hard, fast push and
+ * the recovery is a slower fold back up. The keyTimes below spend a quarter of
+ * the cycle going down and three quarters coming back, and the splines ease each
+ * half in the right direction — snapping into the downstroke, settling out of
+ * the recovery. Linear morphing between symmetric shapes is what made the old
+ * one look mechanical.
+ */
+const WING_CYCLE = [WING_TOP, WING_LEVEL, WING_LOW, WING_HIGH, WING_TOP].join(";");
+const WING_TIMES = "0;0.14;0.26;0.68;1";
+const WING_SPLINES = ["0.35 0 0.65 1", "0.3 0 0.9 0.6", "0.2 0.5 0.6 1", "0.4 0 0.6 1"].join(";");
 
 const BIRDS = [
   { y: 52, scale: 1, duration: 26, delay: 0, flap: 0.54 },
@@ -217,31 +304,59 @@ const CLOUDS = (
 /* -------------------------------------------------------------- component -- */
 
 /**
- * The train itself, drawn around its own origin so a motion path can carry it.
+ * One car, drawn around its own origin with the wheels on the rail.
  *
- * The group is raised so the wheels rest ON the rail rather than straddling it:
- * wheel centres land at y -3 with a 2.2 radius, putting their underside just
- * above the line the motion path follows.
+ * Every car is --brand, the same token the logo mark uses, so the train reads as
+ * the site's own colour rather than a near-miss of it.
+ */
+function Car({ front = false }: { front?: boolean }) {
+  return (
+    <g>
+      <rect x={-8} y={-15} width={16} height={11} rx={3.5} fill="var(--brand)" />
+      <circle cx={-3.5} cy={-3} r={2.2} fill="var(--scene-track)" />
+      <circle cx={3.5} cy={-3} r={2.2} fill="var(--scene-track)" />
+      {/* Riders. */}
+      <circle cx={-2.5} cy={-17.5} r={2.4} fill="var(--scene-track)" />
+      <circle cx={3} cy={-17.5} r={2.4} fill="var(--scene-track)" />
+      {/* Headlight rides the leading car and only shows once the sun is down. */}
+      {front && <circle className="scene-moon" cx={13} cy={-9} r={9} fill="url(#glow)" />}
+    </g>
+  );
+}
+
+/**
+ * The train.
+ *
+ * Each car gets its own motion path rather than the three sharing one rigid
+ * group. A rigid body is placed on the TANGENT at a single point, so wherever
+ * the track curves upward the rail climbs away from that tangent and the train
+ * appears to sink into it — worst exactly where it is most visible, on the way
+ * up a hill. Giving every car its own point on the curve removes the problem by
+ * construction.
+ *
+ * The cars are offset by DISTANCE along the path (via keyPoints) rather than by
+ * time, so the gaps between them stay constant instead of stretching wherever
+ * the train is moving fastest.
  */
 function Train() {
   return (
-    <g transform="translate(-26 -15)">
-      {[0, 19, 38].map((offset) => (
-        <g key={offset}>
-          {/* Every car is --brand, the same token the logo mark uses, so the
-              train reads as the site's own colour rather than a near-miss. */}
-          <rect x={offset} y={0} width={16} height={11} rx={3.5} fill="var(--brand)" />
-          <circle cx={offset + 4.5} cy={12} r={2.2} fill="var(--scene-track)" />
-          <circle cx={offset + 11.5} cy={12} r={2.2} fill="var(--scene-track)" />
-          {/* Riders. */}
-          <circle cx={offset + 5.5} cy={-2.5} r={2.4} fill="var(--scene-track)" />
-          <circle cx={offset + 11} cy={-2.5} r={2.4} fill="var(--scene-track)" />
+    <>
+      {[0, 1, 2].map((index) => (
+        <g key={index} className="scene-train">
+          <Car front={index === 0} />
+          <animateMotion
+            dur="25s"
+            repeatCount="indefinite"
+            rotate="auto"
+            calcMode="linear"
+            keyPoints={keyPointsFor(index)}
+            keyTimes={RIDE.keyTimes}
+          >
+            <mpath href="#cc-track" />
+          </animateMotion>
         </g>
       ))}
-      {/* Headlight at the FRONT. The path runs left to right, so the leading
-          car is the right-hand one; this used to sit behind the train. */}
-      <circle className="scene-moon" cx={58} cy={5.5} r={9} fill="url(#glow)" />
-    </g>
+    </>
   );
 }
 
@@ -382,7 +497,7 @@ export function CoasterScene() {
               <g transform={`translate(0 ${bird.y}) scale(${bird.scale})`}>
                 <path
                   className="scene-fill"
-                  d={WING_UP}
+                  d={WING_TOP}
                   fill="none"
                   stroke="var(--scene-bird)"
                   strokeWidth={2.2}
@@ -391,6 +506,9 @@ export function CoasterScene() {
                   <animate
                     attributeName="d"
                     values={WING_CYCLE}
+                    keyTimes={WING_TIMES}
+                    calcMode="spline"
+                    keySplines={WING_SPLINES}
                     dur={`${bird.flap}s`}
                     repeatCount="indefinite"
                   />
@@ -458,20 +576,19 @@ export function CoasterScene() {
           units by definition and points at the exact same <path> element the
           track is drawn from, so the two cannot drift apart.
         */}
-        <g className="scene-train">
-          <Train />
-          <animateMotion dur="25s" repeatCount="indefinite" rotate="auto" calcMode="linear">
-            <mpath href="#cc-track" />
-          </animateMotion>
-        </g>
+        <Train />
 
         {/*
           Reduced-motion fallback. SMIL cannot be stopped from CSS, so the moving
           train is hidden and this parked one is shown instead — the scene keeps
           its subject without anything on screen actually moving.
         */}
-        <g className="scene-train-static" transform="translate(96 226)">
-          <Train />
+        <g className="scene-train-static" transform="translate(60 227)">
+          {[0, 19, 38].map((offset, i) => (
+            <g key={offset} transform={`translate(${offset} 0)`}>
+              <Car front={i === 0} />
+            </g>
+          ))}
         </g>
       </svg>
     </div>
