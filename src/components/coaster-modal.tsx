@@ -43,13 +43,16 @@ export function CoasterModal({
     .filter(Boolean)
     .join(", ");
 
-  // Coordinates give an exact pin; the name is the fallback so the link still
-  // works for a coaster an admin added without them.
-  const mapsQuery =
-    coaster.latitude != null && coaster.longitude != null
-      ? `${coaster.latitude},${coaster.longitude}`
-      : address;
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`;
+  // Navigate by NAME, not by coordinate.
+  //
+  // A lat/long query drops a pin on exactly those numbers, so a coordinate that
+  // is a few hundred metres out lands the user in the car park next door — or in
+  // a field. Google's geocoder resolves "Alton Towers, Alton, Staffordshire" to
+  // the actual park POI every time, which is what someone clicking this wants.
+  // The stored coordinates are approximate park-level values kept for future use
+  // (a map view, distance-to-park); they are deliberately not the thing that
+  // decides where this link goes.
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
   const facts = [
     { label: "Height", value: formatHeight(coaster.height_m, unitSystem) },

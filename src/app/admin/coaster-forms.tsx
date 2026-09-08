@@ -40,7 +40,7 @@ const MEASUREMENTS: FieldSpec[] = [
 
 const LOCATION: FieldSpec[] = [
   { name: "park_url", label: "Park website", type: "url", hint: "https:// only", span: true },
-  { name: "latitude", label: "Latitude", type: "number", step: "0.000001", hint: "Park gate, not the ride" },
+  { name: "latitude", label: "Latitude", type: "number", step: "0.000001", hint: "Approximate park location. The Maps link resolves the park by name, so this does not steer it." },
   { name: "longitude", label: "Longitude", type: "number", step: "0.000001" },
 ];
 
