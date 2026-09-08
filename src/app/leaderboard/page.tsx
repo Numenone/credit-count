@@ -5,9 +5,18 @@ import { getSessionUser } from "@/lib/auth";
 import type { LeaderboardRow, RideWithCoaster } from "@/lib/database.types";
 import { EmptyState } from "@/components/empty-state";
 import { CountUp } from "@/components/count-up";
-import { TrophyIcon, LockIcon } from "@/components/icons";
+import { Reveal } from "@/components/reveal";
+import { Avatar, LeaderboardTable } from "@/components/leaderboard-table";
+import { TrophyIcon, LockIcon, ArrowRightIcon } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Leaderboard" };
+
+/** Podium furniture, indexed by finishing position. */
+const PODIUM = [
+  { height: "h-28", medal: "#c9971f", label: "1st" },
+  { height: "h-20", medal: "#9aa2ad", label: "2nd" },
+  { height: "h-14", medal: "#a9744a", label: "3rd" },
+];
 
 export default async function LeaderboardPage() {
   const supabase = await createClient();
@@ -25,6 +34,8 @@ export default async function LeaderboardPage() {
     .returns<LeaderboardRow[]>();
 
   const rows = data ?? [];
+  const topCredits = rows[0]?.credits ?? 0;
+  const totalCredits = rows.reduce((sum, row) => sum + row.credits, 0);
 
   // "Your position" is derived from the signed-in user's OWN rides — which RLS
   // already lets them read — and then compared against the public credit counts.
@@ -44,9 +55,6 @@ export default async function LeaderboardPage() {
   const hasPodium = rows.length >= 3;
   const podium = hasPodium ? rows.slice(0, 3) : [];
   const rest = hasPodium ? rows.slice(3) : rows;
-
-  // Indexed by finishing position, so first place is always the tallest block.
-  const heights = ["h-28", "h-20", "h-14"];
   const order = [1, 0, 2]; // silver, gold, bronze — gold in the middle
 
   return (
@@ -97,81 +105,81 @@ export default async function LeaderboardPage() {
         </div>
       )}
 
-      {podium.length > 0 && (
-        <section aria-label="Top three" className="rise">
-          <div className="card grid grid-cols-3 items-end gap-3 p-6 sm:gap-6 sm:p-8">
-            {order.map((slot) => {
-              const row = podium[slot];
-              if (!row) return <div key={slot} />;
-              return (
-                <div key={slot} className="flex flex-col items-center text-center">
-                  <span
-                    className="tabular text-xs font-semibold"
-                    style={{ color: slot === 0 ? "var(--brand)" : "var(--ink-3)" }}
-                  >
-                    #{row.rank}
-                  </span>
-                  <p className="mt-1 line-clamp-2 text-sm font-semibold">{row.display_name}</p>
-                  <p
-                    className="display tabular mt-1.5 font-semibold"
-                    style={{
-                      fontSize: slot === 0 ? "2rem" : "1.5rem",
-                      color: slot === 0 ? "var(--brand)" : "var(--ink)",
-                    }}
-                  >
-                    <CountUp value={row.credits} />
-                  </p>
-                  <div
-                    className={`mt-3 w-full rounded-t-lg ${heights[slot]}`}
-                    style={{
-                      // --surface-sunken sits a hair off the card in light mode,
-                      // which made the runner-up blocks invisible. The runners-up
-                      // need a fill that reads as a block, just quieter than first.
-                      backgroundColor: slot === 0 ? "var(--brand)" : "var(--line-strong)",
-                      transformOrigin: "bottom",
-                      animation: `grow-y 620ms var(--ease-out) ${slot * 90}ms both`,
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
+      {rows.length > 0 && (
+        <section className="rise grid gap-4 sm:grid-cols-3">
+          {[
+            { label: "Enthusiasts listed", value: rows.length },
+            { label: "Credits between them", value: totalCredits },
+            { label: "Leader", value: topCredits },
+          ].map((item) => (
+            <div key={item.label} className="card px-5 py-4">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-[var(--ink-3)]">
+                {item.label}
+              </p>
+              <p className="display tabular mt-1.5 text-2xl font-semibold">
+                <CountUp value={item.value} />
+              </p>
+            </div>
+          ))}
         </section>
       )}
 
+      {podium.length > 0 && (
+        <Reveal>
+          <section aria-label="Top three" className="card overflow-hidden">
+            <div className="grid grid-cols-3 items-end gap-3 px-6 pt-8 sm:gap-8 sm:px-10">
+              {order.map((slot) => {
+                const row = podium[slot];
+                if (!row) return <div key={slot} />;
+                const style = PODIUM[slot];
+                return (
+                  <div key={slot} className="flex flex-col items-center text-center">
+                    <span
+                      className="mb-2 grid h-6 w-6 place-items-center rounded-full text-[0.6rem] font-bold"
+                      style={{ backgroundColor: style.medal, color: "#1a1508" }}
+                      aria-hidden
+                    >
+                      {slot + 1}
+                    </span>
+
+                    <Avatar name={row.display_name} size={slot === 0 ? 48 : 38} />
+
+                    <p className="mt-2 line-clamp-2 text-sm font-semibold">{row.display_name}</p>
+                    <p className="sr-only">{style.label} place</p>
+
+                    <p
+                      className="display tabular mt-1 font-semibold"
+                      style={{
+                        fontSize: slot === 0 ? "2.25rem" : "1.6rem",
+                        color: slot === 0 ? "var(--brand)" : "var(--ink)",
+                      }}
+                    >
+                      <CountUp value={row.credits} />
+                    </p>
+                    <p className="text-[0.7rem] uppercase tracking-wide text-[var(--ink-3)]">
+                      credits
+                    </p>
+
+                    <div
+                      className={`mt-4 w-full rounded-t-lg ${style.height}`}
+                      style={{
+                        backgroundColor: slot === 0 ? "var(--brand)" : "var(--line-strong)",
+                        transformOrigin: "bottom",
+                        animation: `grow-y 640ms var(--ease-out) ${slot * 110}ms both`,
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </Reveal>
+      )}
+
       {rest.length > 0 && (
-        <section className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <caption className="sr-only">
-              Leaderboard positions four and below, by credit count
-            </caption>
-            <thead>
-              <tr className="border-b border-[var(--line)] text-left text-xs uppercase tracking-wide text-[var(--ink-3)]">
-                <th scope="col" className="w-20 px-5 py-3 font-semibold">
-                  Rank
-                </th>
-                <th scope="col" className="px-5 py-3 font-semibold">
-                  Enthusiast
-                </th>
-                <th scope="col" className="w-28 px-5 py-3 text-right font-semibold">
-                  Credits
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rest.map((row, i) => (
-                <tr
-                  key={`${row.display_name}-${i}`}
-                  className="border-b border-[var(--line)] transition-colors last:border-0 hover:bg-[var(--surface-2)]"
-                >
-                  <td className="tabular px-5 py-3 text-[var(--ink-3)]">{row.rank}</td>
-                  <td className="px-5 py-3 font-medium">{row.display_name}</td>
-                  <td className="tabular px-5 py-3 text-right font-semibold">{row.credits}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+        <Reveal>
+          <LeaderboardTable rows={rest} topCredits={topCredits} />
+        </Reveal>
       )}
 
       {mine && (
@@ -189,18 +197,22 @@ export default async function LeaderboardPage() {
               {mine.credits}
             </span>{" "}
             {mine.credits === 1 ? "credit" : "credits"}.
+            {mine.rank > 1 && topCredits > mine.credits && (
+              <> {topCredits - mine.credits} more would take the lead.</>
+            )}
           </p>
-          <Link href="/dashboard" className="btn btn-primary !py-1.5 !text-[0.82rem]">
-            Log another
+          <Link href="/chase" className="btn btn-primary !py-1.5 !text-[0.82rem]">
+            Find your next credit
+            <ArrowRightIcon size={13} />
           </Link>
         </aside>
       )}
 
       <p className="text-xs leading-relaxed text-[var(--ink-3)]">
         Only display name and credit count appear here, and only for users who chose to be listed.
-        Which coasters someone has ridden is never shown, to anyone. Display names are not unique,
-        so two enthusiasts may share one — your own position above is worked out from your account,
-        not from the name.
+        Which coasters someone has ridden is never shown, to anyone. The badge colours are derived
+        from the display name and mean nothing. Display names are not unique, so two enthusiasts may
+        share one — your own position above is worked out from your account, not from the name.
       </p>
     </div>
   );

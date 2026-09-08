@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CountUp } from "@/components/count-up";
+import { Reveal } from "@/components/reveal";
 import { TicketIcon, LockIcon, GlobeIcon, ArrowRightIcon } from "@/components/icons";
 
 interface CommunityStats {
@@ -94,6 +95,7 @@ export default async function HomePage() {
       )}
 
       {/* ------------------------------------------------------------- value -- */}
+      <Reveal>
       <section className="grid gap-4 md:grid-cols-3">
         {[
           {
@@ -125,6 +127,7 @@ export default async function HomePage() {
           </article>
         ))}
       </section>
+      </Reveal>
 
       {/* --------------------------------------------------------- community -- */}
       {community && community.riders > 0 && (
@@ -155,6 +158,7 @@ export default async function HomePage() {
       )}
 
       {/* --------------------------------------------------------------- cta -- */}
+      <Reveal>
       <section className="card flex flex-wrap items-center justify-between gap-5 p-8">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Start your count</h2>
@@ -167,6 +171,7 @@ export default async function HomePage() {
           <ArrowRightIcon size={14} />
         </Link>
       </section>
+      </Reveal>
     </div>
   );
 }

@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { CoasterScene } from "@/components/coaster-scene";
 import { themeScript } from "@/components/theme-toggle";
+import { motionScript } from "@/components/motion-toggle";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -34,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         {/* Applies the stored theme before first paint, so a dark-mode user
             never sees a white flash on navigation. */}
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: themeScript + motionScript }} />
       </head>
       <body className="flex min-h-full flex-col font-sans">
         <a
@@ -49,6 +51,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-5 py-8">
           {children}
         </main>
+
+        {/* Breathing room, then the ride. Full-bleed on purpose: the scene is
+            the one element that should not sit inside the content column. */}
+        <div className="mt-16" />
+        <CoasterScene />
 
         <footer className="border-t border-[var(--line)] bg-[var(--surface)]">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-5 text-xs text-[var(--ink-3)]">

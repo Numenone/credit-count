@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
 import { SettingsForm } from "./settings-form";
+import { MotionToggle } from "@/components/motion-toggle";
 import { LockIcon, TrophyIcon, ArrowRightIcon } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -21,6 +22,13 @@ export default async function SettingsPage() {
       <div className="card p-6">
         <SettingsForm profile={profile} />
       </div>
+
+      <section className="card p-6">
+        <h2 className="text-sm font-semibold">Motion</h2>
+        <div className="mt-3">
+          <MotionToggle />
+        </div>
+      </section>
 
       <section className="card p-6">
         <h2 className="text-sm font-semibold">Export your data</h2>

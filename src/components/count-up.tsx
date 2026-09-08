@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { prefersReducedMotion } from "@/lib/motion";
 
 /**
  * Counts a number up on mount.
@@ -30,8 +31,7 @@ export function CountUp({
 
     // `display` already holds the final value, so the reduced-motion path is
     // simply "do nothing" — no state write, no render.
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced || value === 0) return;
+    if (prefersReducedMotion() || value === 0) return;
 
     // The reset to 0 happens inside the first frame rather than here: at t≈0 the
     // eased value is ≈0, so the animation starts from zero without the effect

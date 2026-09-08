@@ -54,6 +54,20 @@
   --shadow-md: 0 1px 2px rgb(20 20 15 / 0.04), 0 10px 28px -14px rgb(20 20 15 / 0.16);
   --shadow-lg: 0 1px 2px rgb(20 20 15 / 0.05), 0 24px 56px -24px rgb(20 20 15 / 0.22);
 
+  /* Scene band above the footer. Day values; the dark blocks below swap them
+     for night, which is what turns the city windows on. */
+  --scene-city-far: #c2cfdf;
+  --scene-city-near: #9aabc2;
+  --scene-cloud: #dde6f1;
+  --scene-window: #5d6f88;
+  --scene-window-alpha: 0.4;
+  --scene-track: #5c5048;
+  --scene-support: #8b7d71;
+  --scene-bird: #6c7887;
+  --scene-star-alpha: 0;
+  --scene-sun-alpha: 1;
+  --scene-moon-alpha: 0;
+
   --radius: 0.875rem;
   --radius-sm: 0.625rem;
 
@@ -102,6 +116,19 @@
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 28px -14px rgb(0 0 0 / 0.7);
     --shadow-lg: 0 1px 2px rgb(0 0 0 / 0.5), 0 24px 56px -24px rgb(0 0 0 / 0.8);
+
+    /* Night: the same slots, restepped. Windows flip from dark glass to lit. */
+    --scene-city-far: #253350;
+    --scene-city-near: #16203a;
+    --scene-cloud: #1a2438;
+    --scene-window: #f7c86c;
+    --scene-window-alpha: 1;
+    --scene-track: #333a47;
+    --scene-support: #262c38;
+    --scene-bird: #39445a;
+    --scene-star-alpha: 1;
+    --scene-sun-alpha: 0;
+    --scene-moon-alpha: 1;
   }
 }
 
@@ -145,6 +172,19 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-md: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 28px -14px rgb(0 0 0 / 0.7);
   --shadow-lg: 0 1px 2px rgb(0 0 0 / 0.5), 0 24px 56px -24px rgb(0 0 0 / 0.8);
+
+  /* Night: the same slots, restepped. Windows flip from dark glass to lit. */
+  --scene-city-far: #253350;
+  --scene-city-near: #16203a;
+  --scene-cloud: #1a2438;
+  --scene-window: #f7c86c;
+  --scene-window-alpha: 1;
+  --scene-track: #333a47;
+  --scene-support: #262c38;
+  --scene-bird: #39445a;
+  --scene-star-alpha: 1;
+  --scene-sun-alpha: 0;
+  --scene-moon-alpha: 1;
 }
 
 @theme inline {
@@ -252,15 +292,16 @@ body {
 .stagger > *:nth-child(5) { animation-delay: 240ms; }
 .stagger > *:nth-child(6) { animation-delay: 300ms; }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+/* Motion ships on. Suppression is opt-in via the Settings switch, which sets
+   data-motion="reduced" before first paint. The OS media query is deliberately
+   NOT consulted here — see the note in motion-toggle.tsx for the trade-off. */
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before,
+:root[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* ------------------------------------------------------------------ card -- */
@@ -433,4 +474,98 @@ body {
   line-height: 1.35;
   box-shadow: var(--shadow-lg);
   white-space: nowrap;
+}
+
+/* ----------------------------------------------------------------- scene -- */
+/* The band above the footer. All of it is CSS on inline SVG — no canvas, no
+   library, no images — so it themes from the same tokens as the rest of the
+   page and the global reduced-motion rule already stops every animation. */
+
+.scene {
+  width: 100%;
+  /* Tracks the viewBox aspect (1600x302) so "slice" only ever trims the far
+     left and right edges, never the sky the clouds fly through. */
+  height: clamp(200px, 19vw, 320px);
+  display: block;
+}
+
+/* The train rides the track by following the same path the track is drawn
+   from, so the two can never disagree. offset-rotate keeps it banked. */
+@keyframes ride {
+  from { offset-distance: 0%; }
+  to   { offset-distance: 100%; }
+}
+
+/* The moving train is SMIL-driven, so it is shown or hidden rather than paused.
+   Its static twin is the reduced-motion substitute. */
+.scene-train-static { display: none; }
+
+:root[data-motion="reduced"] .scene-train { display: none; }
+:root[data-motion="reduced"] .scene-train-static { display: block; }
+
+@keyframes flap {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(0.35); }
+}
+
+@keyframes glide {
+  from { transform: translate(-180px, 0); }
+  to   { transform: translate(1780px, 0); }
+}
+
+.scene-bird { animation: glide linear infinite; }
+.scene-bird-wings { animation: flap 480ms ease-in-out infinite; transform-origin: center; }
+
+@keyframes twinkle {
+  0%, 100% { opacity: calc(var(--scene-star-alpha) * 0.35); }
+  50%      { opacity: var(--scene-star-alpha); }
+}
+
+.scene-star {
+  opacity: var(--scene-star-alpha);
+  animation: twinkle 3.4s ease-in-out infinite;
+  /* Fades in with the theme rather than snapping on. */
+  transition: opacity 900ms var(--ease);
+}
+
+/* Windows light up in a wave when the theme flips, instead of all at once.
+   The per-window delay is set inline from a deterministic seed. */
+.scene-window {
+  fill: var(--scene-window);
+  opacity: var(--scene-window-alpha);
+  transition: fill 700ms var(--ease), opacity 700ms var(--ease);
+}
+
+.scene-sun { opacity: var(--scene-sun-alpha); transition: opacity 900ms var(--ease); }
+.scene-moon { opacity: var(--scene-moon-alpha); transition: opacity 900ms var(--ease); }
+
+.scene-fill { transition: fill 700ms var(--ease); }
+
+/* Clouds cross the whole band and start well off-screen, so nothing is sitting
+   there when the page loads. A backwards fill keeps them parked at the start
+   position during the delay rather than popping in at their resting place. */
+@keyframes drift-right {
+  from { transform: translateX(-380px); }
+  to   { transform: translateX(1980px); }
+}
+@keyframes drift-left {
+  from { transform: translateX(1980px); }
+  to   { transform: translateX(-380px); }
+}
+.scene-cloud {
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-fill-mode: backwards;
+}
+
+/* --------------------------------------------------------------- reveal -- */
+/* Sections fade up as they enter the viewport. Starts visible and is only
+   hidden once the observer confirms it can watch the element, so a browser
+   without IntersectionObserver — or a failed hydration — shows the content
+   rather than a blank page. */
+.reveal-armed { opacity: 0; transform: translateY(14px); }
+.reveal-in {
+  opacity: 1;
+  transform: none;
+  transition: opacity 620ms var(--ease-out), transform 620ms var(--ease-out);
 }

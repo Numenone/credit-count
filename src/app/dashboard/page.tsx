@@ -14,6 +14,7 @@ import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { Milestones } from "@/components/milestones";
 import { LogRideForm } from "@/components/log-ride-form";
 import { EmptyState } from "@/components/empty-state";
+import { Reveal } from "@/components/reveal";
 import {
   TicketIcon,
   RepeatIcon,
@@ -307,12 +308,12 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             </section>
 
             {/* -------------------------------------------------- activity -- */}
-            <section className="rise">
+            <Reveal>
               <ActivityHeatmap activity={stats.activity} today={today} />
-            </section>
+            </Reveal>
 
             {/* ------------------------------------------------ breakdowns -- */}
-            <section className="space-y-4">
+            <Reveal className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
                 <BarList
                   title="Credits by country"
@@ -326,10 +327,10 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 />
               </div>
               <TypeSplit items={stats.byType} />
-            </section>
+            </Reveal>
 
             {/* ----------------------------------- milestones + top coasters -- */}
-            <section className="grid gap-4 lg:grid-cols-2">
+            <Reveal className="grid gap-4 lg:grid-cols-2">
               <Milestones milestones={milestones} />
 
               <div className="card p-5">
@@ -364,7 +365,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                   <ArrowRightIcon size={13} />
                 </Link>
               </div>
-            </section>
+            </Reveal>
           </>
         )}
       </div>
