@@ -5,6 +5,7 @@
 
 export type CoasterType = "Steel" | "Wooden" | "Hybrid";
 export type UserRole = "enthusiast" | "admin";
+export type UnitSystem = "metric" | "imperial";
 
 export interface Coaster {
   id: string;
@@ -13,6 +14,16 @@ export interface Coaster {
   country: string;
   manufacturer: string;
   type: CoasterType;
+  /** All measurements are stored in SI. Imperial is a display preference only. */
+  height_m: number | null;
+  length_m: number | null;
+  speed_kmh: number | null;
+  inversions: number | null;
+  opened_year: number | null;
+  park_city: string | null;
+  park_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +33,7 @@ export interface Profile {
   display_name: string;
   role: UserRole;
   leaderboard_opt_in: boolean;
+  unit_system: UnitSystem;
   created_at: string;
 }
 
@@ -40,33 +52,19 @@ export interface LeaderboardRow {
   rank: number;
 }
 
+export interface CatalogueHealth {
+  total: number;
+  missing_height: number;
+  missing_length: number;
+  missing_speed: number;
+  missing_location: number;
+  missing_park_url: number;
+  missing_opened_year: number;
+}
+
 /** A ride joined to its catalogue entry, as returned by the nested PostgREST select. */
 export type RideWithCoaster = Ride & { coaster: Coaster };
 
-export interface Database {
-  public: {
-    Tables: {
-      profiles: {
-        Row: Profile;
-        Insert: Partial<Profile> & { id: string; display_name: string };
-        Update: Partial<Pick<Profile, "display_name" | "leaderboard_opt_in">>;
-      };
-      coasters: {
-        Row: Coaster;
-        Insert: Omit<Coaster, "id" | "created_at" | "updated_at"> & { id?: string };
-        Update: Partial<Omit<Coaster, "id" | "created_at" | "updated_at">>;
-      };
-      rides: {
-        Row: Ride;
-        Insert: Omit<Ride, "id" | "created_at" | "user_id"> & { user_id?: string };
-        Update: Partial<Pick<Ride, "coaster_id" | "ridden_on" | "note">>;
-      };
-    };
-    Views: {
-      leaderboard: { Row: LeaderboardRow };
-    };
-    Functions: {
-      is_admin: { Args: Record<string, never>; Returns: boolean };
-    };
-  };
-}
+/** Columns selected wherever a full coaster record is needed. */
+export const COASTER_COLUMNS =
+  "id, name, park, country, manufacturer, type, height_m, length_m, speed_kmh, inversions, opened_year, park_city, park_url, latitude, longitude, created_at, updated_at";

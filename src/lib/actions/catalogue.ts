@@ -5,21 +5,60 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/actions/auth";
 
+/** Empty form fields arrive as "" and mean "no value", not zero. */
+const optionalNumber = (max: number, label: string) =>
+  z
+    .union([z.literal(""), z.coerce.number().positive(`${label} must be positive`).max(max)])
+    .transform((v) => (v === "" ? null : v));
+
 const coasterSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   park: z.string().trim().min(1, "Park is required").max(120),
   country: z.string().trim().min(1, "Country is required").max(60),
   manufacturer: z.string().trim().min(1, "Manufacturer is required").max(80),
   type: z.enum(["Steel", "Wooden", "Hybrid"]),
+  height_m: optionalNumber(999, "Height"),
+  length_m: optionalNumber(99999, "Track length"),
+  speed_kmh: optionalNumber(999, "Top speed"),
+  inversions: z
+    .union([z.literal(""), z.coerce.number().int().min(0).max(99)])
+    .transform((v) => (v === "" ? null : v)),
+  opened_year: z
+    .union([z.literal(""), z.coerce.number().int().min(1884, "No coasters before 1884").max(2100)])
+    .transform((v) => (v === "" ? null : v)),
+  park_city: z
+    .string()
+    .trim()
+    .max(120)
+    .transform((v) => v || null),
+  park_url: z
+    .union([z.literal(""), z.url("Park website must be a URL").startsWith("https://", "Use https://")])
+    .transform((v) => (v === "" ? null : v)),
+  latitude: z
+    .union([z.literal(""), z.coerce.number().min(-90).max(90)])
+    .transform((v) => (v === "" ? null : v)),
+  longitude: z
+    .union([z.literal(""), z.coerce.number().min(-180).max(180)])
+    .transform((v) => (v === "" ? null : v)),
 });
 
 function readCoaster(formData: FormData) {
+  const field = (name: string) => (formData.get(name) ?? "") as string;
   return coasterSchema.safeParse({
-    name: formData.get("name"),
-    park: formData.get("park"),
-    country: formData.get("country"),
-    manufacturer: formData.get("manufacturer"),
-    type: formData.get("type"),
+    name: field("name"),
+    park: field("park"),
+    country: field("country"),
+    manufacturer: field("manufacturer"),
+    type: field("type"),
+    height_m: field("height_m"),
+    length_m: field("length_m"),
+    speed_kmh: field("speed_kmh"),
+    inversions: field("inversions"),
+    opened_year: field("opened_year"),
+    park_city: field("park_city"),
+    park_url: field("park_url"),
+    latitude: field("latitude"),
+    longitude: field("longitude"),
   });
 }
 

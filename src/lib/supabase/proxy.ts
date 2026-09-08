@@ -49,6 +49,11 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // API routes answer for themselves with a JSON 401. Redirecting them to the
+  // login page would hand an HTTP client a 307 and an HTML body, which is a
+  // worse answer than the status code it asked for.
+  if (pathname.startsWith("/api/")) return response;
+
   if (!user && !isPublic(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

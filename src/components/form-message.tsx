@@ -6,13 +6,14 @@ export function FormMessage({ state }: { state: FormState }) {
   const isError = Boolean(state.error);
   return (
     <p
-      role="status"
+      role={isError ? "alert" : "status"}
       aria-live="polite"
-      className={`rounded-lg px-3 py-2 text-sm ${
+      className="rounded-lg px-3 py-2 text-sm"
+      style={
         isError
-          ? "bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
-          : "bg-emerald-50 text-emerald-800"
-      }`}
+          ? { backgroundColor: "var(--brand-soft)", color: "var(--brand)" }
+          : { backgroundColor: "var(--good-soft)", color: "var(--good)" }
+      }
     >
       {state.error ?? state.message}
     </p>

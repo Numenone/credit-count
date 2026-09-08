@@ -166,6 +166,24 @@ console.log("\nCatalogue permissions");
 
   const stillEnthusiast = await a.client.from("profiles").select("role").eq("id", a.userId).single();
   check("A's role is still 'enthusiast'", stillEnthusiast.data?.role === "enthusiast");
+
+  // The unit preference was added to the column grant on purpose; role was not.
+  // This asserts the grant is scoped, not simply absent.
+  const units = await a.client
+    .from("profiles")
+    .update({ unit_system: "imperial" }, { count: "exact" })
+    .eq("id", a.userId);
+  check("enthusiast CAN set their own unit preference", (units.count ?? 0) === 1, units.error?.message);
+
+  const sneaky = await a.client
+    .from("profiles")
+    .update({ unit_system: "metric", role: "admin" }, { count: "exact" })
+    .eq("id", a.userId);
+  check(
+    "a mixed update naming role is refused whole",
+    Boolean(sneaky.error),
+    sneaky.error?.message,
+  );
 }
 
 // ------------------------------------------------------------------ admins --

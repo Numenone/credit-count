@@ -77,13 +77,42 @@ Requires two enthusiast accounts and, optionally, an admin account, set in `.env
 ## Repository layout
 
 ```
-src/app/                 routes: /, /login, /signup, /leaderboard, /dashboard, /rides, /settings, /admin
+src/app/                 routes: /, /login, /signup, /leaderboard, /dashboard, /rides, /chase, /settings
+src/app/admin/           admin console: overview, catalogue CRUD, API explorer
+src/app/api/v1/          REST API — coasters, rides, me, stats, leaderboard, export
 src/components/          shared UI
 src/lib/actions/         server actions (auth, rides, profile, catalogue)
 src/lib/supabase/        server client and session refresh
-src/lib/stats.ts         credit and breakdown calculations
+src/lib/stats.ts         credit, breakdown, distance and milestone calculations
+src/lib/units.ts         metric/imperial formatting (SI is the only stored unit)
+src/lib/api-spec.ts      endpoint descriptions the explorer renders
 src/proxy.ts             session refresh + route gating (Next 16 renamed middleware to proxy)
 supabase/migrations/     schema, RLS policies, leaderboard view, catalogue seed
 scripts/                 database-level security verification
 docs/TDD.md              technical design document
 ```
+
+## Beyond the SOW
+
+The brief asked for a credit tracker. These went in on top, and each is flagged in the TDD:
+
+| Feature | Why |
+| --- | --- |
+| Coaster measurements, coordinates and park links | A catalogue that only identifies a coaster cannot describe one. These make the detail modal, the map link and the physical stats possible. |
+| Metric / imperial preference | Stored in SI, converted at render. Two users with different settings still compare like for like. |
+| Chase list (`/chase`) | The dashboard answers "what have I ridden". This answers "where do I go next", grouped by park, which is the question a credit counter actually acts on. |
+| REST API (`/api/v1`) | The same data as the pages, through the same RLS. No handler contains a role check. |
+| API explorer (`/admin/api`) | A hand-built request runner in the site's own theme. Sends real requests with your real session, so an enthusiast watching a 403 arrive is watching Postgres refuse them. |
+| Admin overview | Catalogue completeness, distributions and possible duplicates — all aggregates, none of it anyone's ride history. |
+| Data export | CSV and JSON of your own rides. Privacy that traps your data is only half a promise. |
+
+## Verifying the security model
+
+```bash
+node --env-file=.env.local scripts/verify-security.mjs
+```
+
+23 checks run against the live database with the anon key, bypassing the UI entirely: what a
+visitor can read, that one enthusiast cannot touch another's rides, that an enthusiast can set
+their own unit preference but cannot name `role` in the same update, and that an admin can curate
+the catalogue while still being unable to read anyone's history.
