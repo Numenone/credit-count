@@ -500,13 +500,9 @@ body {
    Its static twin is the reduced-motion substitute. */
 .scene-train-static { display: none; }
 
+:root[data-motion="reduced"] .scene-bird { display: none; }
 :root[data-motion="reduced"] .scene-train { display: none; }
 :root[data-motion="reduced"] .scene-train-static { display: block; }
-
-@keyframes flap {
-  0%, 100% { transform: scaleY(1); }
-  50%      { transform: scaleY(0.35); }
-}
 
 @keyframes glide {
   from { transform: translate(-180px, 0); }
@@ -514,7 +510,6 @@ body {
 }
 
 .scene-bird { animation: glide linear infinite; }
-.scene-bird-wings { animation: flap 480ms ease-in-out infinite; transform-origin: center; }
 
 @keyframes twinkle {
   0%, 100% { opacity: calc(var(--scene-star-alpha) * 0.35); }

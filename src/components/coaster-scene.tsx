@@ -167,11 +167,24 @@ const STARS = Array.from({ length: 46 }, (_, i) => {
   };
 });
 
+/**
+ * Wing positions, animated as the path itself.
+ *
+ * The first attempt scaled the wings vertically with CSS. On an SVG element
+ * `transform-origin: center` resolves against the *viewBox*, not the element, so
+ * the squash was anchored 150 units away and dragged each bird up and down
+ * instead of flapping it. Animating the `d` attribute has no origin to get wrong.
+ */
+const WING_UP = "M -14 0 q 7 -9 14 0 q 7 -9 14 0";
+const WING_FLAT = "M -14 0 q 7 -2 14 0 q 7 -2 14 0";
+const WING_DOWN = "M -14 0 q 7 5 14 0 q 7 5 14 0";
+const WING_CYCLE = [WING_UP, WING_FLAT, WING_DOWN, WING_FLAT, WING_UP].join(";");
+
 const BIRDS = [
-  { y: 52, scale: 1, duration: 26, delay: 0 },
-  { y: 74, scale: 0.78, duration: 32, delay: -9 },
-  { y: 38, scale: 0.62, duration: 38, delay: -18 },
-  { y: 92, scale: 0.9, duration: 29, delay: -24 },
+  { y: 52, scale: 1, duration: 26, delay: 0, flap: 0.54 },
+  { y: 74, scale: 0.78, duration: 32, delay: -9, flap: 0.66 },
+  { y: 38, scale: 0.62, duration: 38, delay: -18, flap: 0.46 },
+  { y: 92, scale: 0.9, duration: 29, delay: -24, flap: 0.6 },
 ];
 
 /**
@@ -203,10 +216,16 @@ const CLOUDS = (
 
 /* -------------------------------------------------------------- component -- */
 
-/** The train itself, drawn around its own origin so a motion path can carry it. */
+/**
+ * The train itself, drawn around its own origin so a motion path can carry it.
+ *
+ * The group is raised so the wheels rest ON the rail rather than straddling it:
+ * wheel centres land at y -3 with a 2.2 radius, putting their underside just
+ * above the line the motion path follows.
+ */
 function Train() {
   return (
-    <g transform="translate(-26 -9)">
+    <g transform="translate(-26 -15)">
       {[0, 19, 38].map((offset) => (
         <g key={offset}>
           {/* Every car is --brand, the same token the logo mark uses, so the
@@ -219,8 +238,9 @@ function Train() {
           <circle cx={offset + 11} cy={-2.5} r={2.4} fill="var(--scene-track)" />
         </g>
       ))}
-      {/* Headlight, only visible once the sun is down. */}
-      <circle className="scene-moon" cx={-3} cy={5.5} r={9} fill="url(#glow)" />
+      {/* Headlight at the FRONT. The path runs left to right, so the leading
+          car is the right-hand one; this used to sit behind the train. */}
+      <circle className="scene-moon" cx={58} cy={5.5} r={9} fill="url(#glow)" />
     </g>
   );
 }
@@ -361,13 +381,20 @@ export function CoasterScene() {
             >
               <g transform={`translate(0 ${bird.y}) scale(${bird.scale})`}>
                 <path
-                  className="scene-bird-wings scene-fill"
-                  d="M 0 0 q 7 -7 14 0 q 7 -7 14 0"
+                  className="scene-fill"
+                  d={WING_UP}
                   fill="none"
                   stroke="var(--scene-bird)"
                   strokeWidth={2.2}
                   strokeLinecap="round"
-                />
+                >
+                  <animate
+                    attributeName="d"
+                    values={WING_CYCLE}
+                    dur={`${bird.flap}s`}
+                    repeatCount="indefinite"
+                  />
+                </path>
               </g>
             </g>
           ))}
