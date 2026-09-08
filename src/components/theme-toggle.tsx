@@ -1,10 +1,10 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { THEME_KEY } from "@/lib/appearance";
 
 type Theme = "light" | "dark" | "system";
 
-const STORAGE_KEY = "cc-theme";
 
 /**
  * The theme lives in localStorage and on <html data-theme>, both of which are
@@ -25,7 +25,7 @@ function subscribe(onChange: () => void) {
 }
 
 function getSnapshot(): Theme {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = localStorage.getItem(THEME_KEY);
   return stored === "light" || stored === "dark" ? stored : "system";
 }
 
@@ -33,10 +33,10 @@ function setTheme(theme: Theme) {
   const root = document.documentElement;
   if (theme === "system") {
     root.removeAttribute("data-theme");
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(THEME_KEY);
   } else {
     root.setAttribute("data-theme", theme);
-    localStorage.setItem(STORAGE_KEY, theme);
+    localStorage.setItem(THEME_KEY, theme);
   }
   listeners.forEach((l) => l());
 }
@@ -88,8 +88,6 @@ export function ThemeToggle() {
   );
 }
 
-/** Runs before paint so a dark-mode user never sees a white flash. */
-export const themeScript = `(function(){try{var t=localStorage.getItem("${STORAGE_KEY}");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
 
 function SunIcon() {
   return (

@@ -3,8 +3,7 @@ import { Geist } from "next/font/google";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { CoasterScene } from "@/components/coaster-scene";
-import { themeScript } from "@/components/theme-toggle";
-import { motionScript } from "@/components/motion-toggle";
+import { themeScript, motionScript } from "@/lib/appearance";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -33,12 +32,19 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geist.variable} h-full antialiased`} suppressHydrationWarning>
-      <head>
-        {/* Applies the stored theme before first paint, so a dark-mode user
-            never sees a white flash on navigation. */}
-        <script dangerouslySetInnerHTML={{ __html: themeScript + motionScript }} />
-      </head>
       <body className="flex min-h-full flex-col font-sans">
+        {/*
+          Applies the stored theme and motion preference before the page paints.
+
+          This lives at the top of <body>, not inside a <head> element. A manual
+          <head> in the App Router root layout is not a supported insertion point
+          — Next owns that element, and the script was being dropped from the
+          server HTML entirely. The symptom was specific and misleading: the
+          toggle read "light" from localStorage and looked correct, while the
+          page rendered dark because the attribute the stylesheet reads was
+          never set.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript + motionScript }} />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-[var(--surface)] focus:px-3 focus:py-2 focus:text-sm focus:shadow-lg"

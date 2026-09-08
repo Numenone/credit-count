@@ -342,7 +342,7 @@ function Train() {
   return (
     <>
       {[0, 1, 2].map((index) => (
-        <g key={index} className="scene-train">
+        <g key={index} className="scene-train scene-motion-only">
           <Car front={index === 0} />
           <animateMotion
             dur="25s"
@@ -382,7 +382,7 @@ export function CoasterScene() {
             window cut into it. */}
 
         {/* Stars — invisible by day because their alpha token is 0. */}
-        <g>
+        <g className="scene-motion-only">
           {STARS.map((star, i) => (
             <circle
               key={i}
@@ -396,8 +396,8 @@ export function CoasterScene() {
           ))}
         </g>
 
-        <circle className="scene-sun" cx={1310} cy={-4} r={26} fill="#f6c65c" />
-        <g className="scene-moon">
+        <circle className="scene-sun scene-motion-only" cx={1310} cy={-4} r={26} fill="#f6c65c" />
+        <g className="scene-moon scene-motion-only">
           <circle cx={1310} cy={-4} r={22} fill="#e8ecf5" />
           {/* The crescent is cut with a disc painted in the page background, so
               it stays a crescent whatever the page is sitting on. */}
@@ -407,7 +407,7 @@ export function CoasterScene() {
         {/* Clouds drift across in both directions and stay out of the way of
             the sun and moon. They are present in both themes — a night sky with
             no cloud at all looks like a missing layer. */}
-        <g>
+        <g className="scene-motion-only">
           {CLOUDS.map((cloud, i) => (
             <g
               key={i}
@@ -487,7 +487,7 @@ export function CoasterScene() {
         </g>
 
         {/* Birds pass behind the ride, in front of the city. */}
-        <g>
+        <g className="scene-motion-only">
           {BIRDS.map((bird, i) => (
             <g
               key={i}
@@ -577,19 +577,6 @@ export function CoasterScene() {
           track is drawn from, so the two cannot drift apart.
         */}
         <Train />
-
-        {/*
-          Reduced-motion fallback. SMIL cannot be stopped from CSS, so the moving
-          train is hidden and this parked one is shown instead — the scene keeps
-          its subject without anything on screen actually moving.
-        */}
-        <g className="scene-train-static" transform="translate(60 227)">
-          {[0, 19, 38].map((offset, i) => (
-            <g key={offset} transform={`translate(${offset} 0)`}>
-              <Car front={i === 0} />
-            </g>
-          ))}
-        </g>
       </svg>
     </div>
   );

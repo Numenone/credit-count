@@ -1,8 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { MOTION_KEY } from "@/lib/appearance";
 
-const STORAGE_KEY = "cc-motion";
 
 /**
  * Motion preference — on for everyone by default, off only when the reader
@@ -31,17 +31,17 @@ function subscribe(onChange: () => void) {
 }
 
 function getSnapshot(): MotionPreference {
-  return localStorage.getItem(STORAGE_KEY) === "reduced" ? "reduced" : "full";
+  return localStorage.getItem(MOTION_KEY) === "reduced" ? "reduced" : "full";
 }
 
 function setPreference(value: MotionPreference) {
   const root = document.documentElement;
   if (value === "reduced") {
     root.setAttribute("data-motion", "reduced");
-    localStorage.setItem(STORAGE_KEY, "reduced");
+    localStorage.setItem(MOTION_KEY, "reduced");
   } else {
     root.removeAttribute("data-motion");
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(MOTION_KEY);
   }
   listeners.forEach((l) => l());
 }
@@ -74,5 +74,3 @@ export function MotionToggle() {
   );
 }
 
-/** Applied before paint, so a reader who turned motion off never sees it start. */
-export const motionScript = `(function(){try{if(localStorage.getItem("${STORAGE_KEY}")==="reduced"){document.documentElement.setAttribute("data-motion","reduced");}}catch(e){}})();`;

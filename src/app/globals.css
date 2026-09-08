@@ -496,13 +496,10 @@ body {
   to   { offset-distance: 100%; }
 }
 
-/* The moving train is SMIL-driven, so it is shown or hidden rather than paused.
-   Its static twin is the reduced-motion substitute. */
-.scene-train-static { display: none; }
-
-:root[data-motion="reduced"] .scene-bird { display: none; }
-:root[data-motion="reduced"] .scene-train { display: none; }
-:root[data-motion="reduced"] .scene-train-static { display: block; }
+/* Under reduced motion the scene keeps the ride and the city and drops
+   everything whose only job was to move — sun, moon, stars, clouds, birds and
+   the train. SMIL ignores CSS, so these are hidden rather than paused. */
+:root[data-motion="reduced"] .scene-motion-only { display: none; }
 
 @keyframes glide {
   from { transform: translate(-180px, 0); }
