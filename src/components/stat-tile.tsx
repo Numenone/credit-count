@@ -46,7 +46,7 @@ export function StatTile({
 
       <p
         className={`display mt-2 font-semibold ${
-          emphasis ? "text-[2.75rem]" : "text-[2rem]"
+          emphasis ? "text-[2.25rem] sm:text-[2.75rem]" : "text-[1.75rem] sm:text-[2rem]"
         }`}
         style={emphasis ? { color: "var(--brand)" } : undefined}
       >

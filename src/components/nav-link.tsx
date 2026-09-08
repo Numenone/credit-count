@@ -4,7 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /** Nav item that marks the current section for sighted users and for AT. */
-export function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+export function NavLink({
+  href,
+  children,
+  accent = false,
+}: {
+  href: string;
+  children: React.ReactNode;
+  accent?: boolean;
+}) {
   const pathname = usePathname();
   const active = pathname === href || pathname.startsWith(`${href}/`);
 
@@ -12,8 +20,8 @@ export function NavLink({ href, children }: { href: string; children: React.Reac
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className="relative rounded-md px-2.5 py-1.5 transition-colors"
-      style={{ color: active ? "var(--ink)" : "var(--ink-3)" }}
+      className="relative whitespace-nowrap rounded-md px-2.5 py-1.5 transition-colors"
+      style={{ color: active ? "var(--ink)" : accent ? "var(--brand)" : "var(--ink-3)" }}
     >
       {children}
       {active && (

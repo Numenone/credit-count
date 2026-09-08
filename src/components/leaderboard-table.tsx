@@ -90,7 +90,8 @@ export function LeaderboardTable({
           Nobody listed matches “{query}”.
         </p>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[22rem] text-sm">
           <caption className="sr-only">
             Leaderboard positions four and below, ranked by credit count
           </caption>
@@ -140,6 +141,7 @@ export function LeaderboardTable({
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </section>
   );

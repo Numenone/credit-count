@@ -54,7 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 
         <SiteHeader />
 
-        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-5 py-8">
+        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-5 sm:py-8 2xl:max-w-7xl">
           {children}
         </main>
 
@@ -64,7 +64,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <CoasterScene />
 
         <footer className="border-t border-[var(--line)] bg-[var(--surface)]">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-5 text-xs text-[var(--ink-3)]">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-[var(--ink-3)] sm:px-5 2xl:max-w-7xl">
             <p>
               Credit Count — a credit tracker for rollercoaster enthusiasts. Catalogue seeded from
               public RCDB records.

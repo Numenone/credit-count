@@ -44,7 +44,7 @@ export default async function ChasePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ink-3)]">
               Still to ride
             </p>
-            <h1 className="display mt-1.5 text-3xl font-semibold sm:text-4xl">Chase list</h1>
+            <h1 className="display mt-1.5 text-[1.75rem] font-semibold sm:text-4xl">Chase list</h1>
             <p className="mt-2 max-w-lg text-sm text-[var(--ink-2)]">
               Every coaster in the catalogue you have not logged yet, grouped by park so a trip
               plans itself.

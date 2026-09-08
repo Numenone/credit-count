@@ -119,7 +119,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ink-3)]">
               {isNewUser ? "Welcome" : "Your credits"}
             </p>
-            <h1 className="display mt-1.5 text-3xl font-semibold sm:text-4xl">
+            <h1 className="display mt-1.5 text-[1.75rem] font-semibold sm:text-4xl">
               {profile.display_name}
             </h1>
           </div>

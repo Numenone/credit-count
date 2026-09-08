@@ -33,7 +33,7 @@ export function LogRideForm({
       <form action={action} className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <input type="hidden" name="coasterId" value={coaster.id} />
 
-        <div className="mr-auto min-w-0">
+        <div className="mr-auto w-full min-w-0 sm:w-auto">
           <p className="flex items-center gap-2 text-sm font-medium">
             <CoasterName coaster={coaster} />
             {alreadyRidden > 0 && (

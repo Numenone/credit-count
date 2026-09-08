@@ -104,7 +104,7 @@ export function ChaseList({
 
   return (
     <div className="space-y-4">
-      <div className="card flex flex-wrap gap-2 p-4">
+      <div className="card grid gap-2 p-4 sm:flex sm:flex-wrap">
         <div className="relative min-w-[14rem] flex-1">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-3)]">
             <SearchIcon />
@@ -123,7 +123,7 @@ export function ChaseList({
           value={country}
           onChange={(e) => setCountry(e.target.value)}
           aria-label="Country"
-          className="field !w-auto"
+          className="field sm:!w-auto"
         >
           <option value="">All countries</option>
           {countries.map((c) => (
@@ -137,7 +137,7 @@ export function ChaseList({
           value={type}
           onChange={(e) => setType(e.target.value)}
           aria-label="Coaster type"
-          className="field !w-auto"
+          className="field sm:!w-auto"
         >
           <option value="">All types</option>
           {["Steel", "Wooden", "Hybrid"].map((t) => (
@@ -151,7 +151,7 @@ export function ChaseList({
           value={sort}
           onChange={(e) => setSort(e.target.value as SortKey)}
           aria-label="Sort order"
-          className="field !w-auto"
+          className="field sm:!w-auto"
         >
           {SORTS.map((s) => (
             <option key={s.key} value={s.key}>

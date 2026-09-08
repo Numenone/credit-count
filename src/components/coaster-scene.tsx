@@ -342,7 +342,7 @@ function Train() {
   return (
     <>
       {[0, 1, 2].map((index) => (
-        <g key={index} className="scene-train scene-motion-only">
+        <g key={index} className="scene-train scene-motion-only" style={{ transitionDelay: "360ms" }}>
           <Car front={index === 0} />
           <animateMotion
             dur="25s"
@@ -382,7 +382,7 @@ export function CoasterScene() {
             window cut into it. */}
 
         {/* Stars — invisible by day because their alpha token is 0. */}
-        <g className="scene-motion-only">
+        <g className="scene-motion-only" style={{ transitionDelay: "0ms" }}>
           {STARS.map((star, i) => (
             <circle
               key={i}
@@ -396,8 +396,8 @@ export function CoasterScene() {
           ))}
         </g>
 
-        <circle className="scene-sun scene-motion-only" cx={1310} cy={-4} r={26} fill="#f6c65c" />
-        <g className="scene-moon scene-motion-only">
+        <circle className="scene-sun scene-motion-only" style={{ transitionDelay: "90ms" }} cx={1310} cy={-4} r={26} fill="#f6c65c" />
+        <g className="scene-moon scene-motion-only" style={{ transitionDelay: "90ms" }}>
           <circle cx={1310} cy={-4} r={22} fill="#e8ecf5" />
           {/* The crescent is cut with a disc painted in the page background, so
               it stays a crescent whatever the page is sitting on. */}
@@ -407,7 +407,7 @@ export function CoasterScene() {
         {/* Clouds drift across in both directions and stay out of the way of
             the sun and moon. They are present in both themes — a night sky with
             no cloud at all looks like a missing layer. */}
-        <g className="scene-motion-only">
+        <g className="scene-motion-only" style={{ transitionDelay: "180ms" }}>
           {CLOUDS.map((cloud, i) => (
             <g
               key={i}
@@ -487,7 +487,7 @@ export function CoasterScene() {
         </g>
 
         {/* Birds pass behind the ride, in front of the city. */}
-        <g className="scene-motion-only">
+        <g className="scene-motion-only" style={{ transitionDelay: "270ms" }}>
           {BIRDS.map((bird, i) => (
             <g
               key={i}

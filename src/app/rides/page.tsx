@@ -63,7 +63,7 @@ export default async function RidesPage() {
               Only you can see this
             </span>
           </div>
-          <h1 className="display mt-2.5 text-3xl font-semibold sm:text-4xl">My rides</h1>
+          <h1 className="display mt-2.5 text-[1.75rem] font-semibold sm:text-4xl">My rides</h1>
           <p className="mt-2 text-sm text-[var(--ink-2)]">
             <span className="tabular font-semibold text-[var(--ink)]">{stats.rides}</span>{" "}
             {stats.rides === 1 ? "ride" : "rides"} ·{" "}

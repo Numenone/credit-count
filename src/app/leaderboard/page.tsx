@@ -64,7 +64,7 @@ export default async function LeaderboardPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ink-3)]">
             Opt-in only
           </p>
-          <h1 className="display mt-1.5 text-3xl font-semibold sm:text-4xl">Leaderboard</h1>
+          <h1 className="display mt-1.5 text-[1.75rem] font-semibold sm:text-4xl">Leaderboard</h1>
           <p className="mt-2 max-w-lg text-sm text-[var(--ink-2)]">
             Enthusiasts who chose to be listed, ranked by credits. Everyone else stays private.
           </p>
@@ -127,7 +127,7 @@ export default async function LeaderboardPage() {
       {podium.length > 0 && (
         <Reveal>
           <section aria-label="Top three" className="card overflow-hidden">
-            <div className="grid grid-cols-3 items-end gap-3 px-6 pt-8 sm:gap-8 sm:px-10">
+            <div className="grid grid-cols-3 items-end gap-2 px-3 pt-6 sm:gap-8 sm:px-10 sm:pt-8">
               {order.map((slot) => {
                 const row = podium[slot];
                 if (!row) return <div key={slot} />;
@@ -144,13 +144,13 @@ export default async function LeaderboardPage() {
 
                     <Avatar name={row.display_name} size={slot === 0 ? 48 : 38} />
 
-                    <p className="mt-2 line-clamp-2 text-sm font-semibold">{row.display_name}</p>
+                    <p className="mt-2 line-clamp-2 text-[0.78rem] font-semibold sm:text-sm">{row.display_name}</p>
                     <p className="sr-only">{style.label} place</p>
 
                     <p
                       className="display tabular mt-1 font-semibold"
                       style={{
-                        fontSize: slot === 0 ? "2.25rem" : "1.6rem",
+                        fontSize: slot === 0 ? "clamp(1.6rem, 6vw, 2.25rem)" : "clamp(1.15rem, 4.5vw, 1.6rem)",
                         color: slot === 0 ? "var(--brand)" : "var(--ink)",
                       }}
                     >

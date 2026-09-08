@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           <LockIcon size={11} />
           Admin console
         </span>
-        <h1 className="display mt-2.5 text-3xl font-semibold sm:text-4xl">
+        <h1 className="display mt-2.5 text-[1.75rem] font-semibold sm:text-4xl">
           Catalogue &amp; system
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-[var(--ink-2)]">

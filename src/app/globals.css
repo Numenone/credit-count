@@ -304,176 +304,188 @@ body {
   scroll-behavior: auto !important;
 }
 
-/* ------------------------------------------------------------------ card -- */
+/* -------------------------------------------------------------- components --
+   These live in @layer components on purpose.
 
-.card {
-  background-color: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-}
+   Unlayered CSS beats every @layer, so while .btn sat outside one it silently
+   won against Tailwind utilities: an lg:hidden class on a .btn did nothing,
+   so the mobile menu button stayed visible on desktop. Inside this layer,
+   utilities take precedence again, which is the whole point of using them.
+--------------------------------------------------------------------------- */
 
-.card-lift {
-  transition: box-shadow 220ms var(--ease), border-color 220ms var(--ease),
-    transform 220ms var(--ease);
-}
-.card-lift:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--line-strong);
-  transform: translateY(-1px);
-}
+@layer components {
+  /* ------------------------------------------------------------------ card -- */
 
-/* --------------------------------------------------------------- controls -- */
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+  }
 
-.field {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background-color: var(--surface);
-  padding: 0.55rem 0.75rem;
-  font-size: 0.925rem;
-  color: var(--ink);
-  transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
-}
+  .card-lift {
+    transition: box-shadow 220ms var(--ease), border-color 220ms var(--ease),
+      transform 220ms var(--ease);
+  }
+  .card-lift:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--line-strong);
+    transform: translateY(-1px);
+  }
 
-.field::placeholder {
-  color: var(--ink-3);
-}
+  /* --------------------------------------------------------------- controls -- */
 
-.field:hover {
-  border-color: var(--line-strong);
-}
+  .field {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface);
+    padding: 0.55rem 0.75rem;
+    font-size: 0.925rem;
+    color: var(--ink);
+    transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
+  }
 
-.field:focus {
-  outline: none;
-  border-color: var(--brand);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 18%, transparent);
-}
+  .field::placeholder {
+    color: var(--ink-3);
+  }
 
-.label {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin-bottom: 0.35rem;
-}
+  .field:hover {
+    border-color: var(--line-strong);
+  }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  border-radius: var(--radius-sm);
-  padding: 0.55rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: background-color 160ms var(--ease), border-color 160ms var(--ease),
-    transform 120ms var(--ease), opacity 160ms var(--ease);
-}
+  .field:focus {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 18%, transparent);
+  }
 
-.btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
+  .label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 0.35rem;
+  }
 
-.btn-primary {
-  background-color: var(--brand);
-  color: var(--brand-ink);
-}
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--brand-hover);
-}
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 160ms var(--ease), border-color 160ms var(--ease),
+      transform 120ms var(--ease), opacity 160ms var(--ease);
+  }
 
-.btn-quiet {
-  border: 1px solid var(--line);
-  background-color: var(--surface);
-  color: var(--ink);
-}
-.btn-quiet:hover:not(:disabled) {
-  border-color: var(--line-strong);
-  background-color: var(--surface-2);
-}
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
 
-.btn-ghost {
-  color: var(--ink-2);
-  padding: 0.4rem 0.6rem;
-}
-.btn-ghost:hover:not(:disabled) {
-  background-color: var(--surface-2);
-  color: var(--ink);
-}
+  .btn-primary {
+    background-color: var(--brand);
+    color: var(--brand-ink);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--brand-hover);
+  }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+  .btn-quiet {
+    border: 1px solid var(--line);
+    background-color: var(--surface);
+    color: var(--ink);
+  }
+  .btn-quiet:hover:not(:disabled) {
+    border-color: var(--line-strong);
+    background-color: var(--surface-2);
+  }
 
-.link-quiet {
-  color: var(--ink-2);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-color: var(--line-strong);
-  transition: color 160ms var(--ease), text-decoration-color 160ms var(--ease);
-}
-.link-quiet:hover {
-  color: var(--ink);
-  text-decoration-color: var(--ink-3);
-}
+  .btn-ghost {
+    color: var(--ink-2);
+    padding: 0.4rem 0.6rem;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background-color: var(--surface-2);
+    color: var(--ink);
+  }
 
-/* ----------------------------------------------------------------- chips -- */
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  border-radius: 999px;
-  padding: 0.15rem 0.55rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  border: 1px solid var(--line);
-  color: var(--ink-3);
-  background-color: var(--surface-2);
-}
+  .link-quiet {
+    color: var(--ink-2);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--line-strong);
+    transition: color 160ms var(--ease), text-decoration-color 160ms var(--ease);
+  }
+  .link-quiet:hover {
+    color: var(--ink);
+    text-decoration-color: var(--ink-3);
+  }
 
-.chip-brand {
-  border-color: var(--brand-line);
-  background-color: var(--brand-soft);
-  color: var(--brand);
-}
+  /* ----------------------------------------------------------------- chips -- */
 
-/* -------------------------------------------------------------- skeleton -- */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid var(--line);
+    color: var(--ink-3);
+    background-color: var(--surface-2);
+  }
 
-.skeleton {
-  background-color: var(--surface-sunken);
-  background-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in oklab, var(--ink) 5%, transparent) 50%,
-    transparent 100%
-  );
-  background-size: 180% 100%;
-  animation: shimmer 1.4s linear infinite;
-  border-radius: 6px;
-}
+  .chip-brand {
+    border-color: var(--brand-line);
+    background-color: var(--brand-soft);
+    color: var(--brand);
+  }
 
-/* --------------------------------------------------------------- tooltip -- */
+  /* -------------------------------------------------------------- skeleton -- */
 
-.viz-tooltip {
-  position: absolute;
-  z-index: 30;
-  pointer-events: none;
-  background-color: var(--ink);
-  color: var(--canvas);
-  border-radius: 8px;
-  padding: 0.4rem 0.55rem;
-  font-size: 0.75rem;
-  line-height: 1.35;
-  box-shadow: var(--shadow-lg);
-  white-space: nowrap;
+  .skeleton {
+    background-color: var(--surface-sunken);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklab, var(--ink) 5%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 180% 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: 6px;
+  }
+
+  /* --------------------------------------------------------------- tooltip -- */
+
+  .viz-tooltip {
+    position: absolute;
+    z-index: 30;
+    pointer-events: none;
+    background-color: var(--ink);
+    color: var(--canvas);
+    border-radius: 8px;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    box-shadow: var(--shadow-lg);
+    white-space: nowrap;
+  }
+
 }
 
 /* ----------------------------------------------------------------- scene -- */
@@ -498,8 +510,26 @@ body {
 
 /* Under reduced motion the scene keeps the ride and the city and drops
    everything whose only job was to move — sun, moon, stars, clouds, birds and
-   the train. SMIL ignores CSS, so these are hidden rather than paused. */
-:root[data-motion="reduced"] .scene-motion-only { display: none; }
+   the train.
+
+   They fade rather than vanish, and each layer carries its own delay (set
+   inline), so the sky empties and refills in sequence instead of blinking. The
+   visibility flip is delayed until the fade has finished, which is what
+   actually stops the SMIL animations painting. */
+.scene-motion-only {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 620ms var(--ease), visibility 0s linear 0s;
+}
+
+:root[data-motion="reduced"] .scene-motion-only {
+  opacity: 0;
+  visibility: hidden;
+  /* Beats the blanket transition kill above: that rule is :root[…] *, this one
+     is more specific, and both are !important. Without it the scene would snap. */
+  transition: opacity 620ms var(--ease), visibility 0s linear 620ms !important;
+  transition-duration: 620ms, 0s !important;
+}
 
 @keyframes glide {
   from { transform: translate(-180px, 0); }

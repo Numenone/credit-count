@@ -153,16 +153,23 @@ function EndpointRow({
         className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--surface-2)]"
       >
         <MethodBadge method={endpoint.method} />
-        <code className="shrink-0 text-[0.82rem] font-medium">{endpoint.path}</code>
-        <span className="mr-auto hidden truncate text-xs text-[var(--ink-3)] sm:block">
+        <code className="min-w-0 flex-1 truncate text-[0.78rem] font-medium sm:flex-none sm:text-[0.82rem]">{endpoint.path}</code>
+        <span className="mr-auto hidden truncate text-xs text-[var(--ink-3)] lg:block">
           {endpoint.summary}
         </span>
-        <span className="chip shrink-0">
+        {/* The access label is the widest thing in the row; below sm it becomes
+            just the lock, and the full wording is still in the expanded panel. */}
+        <span className="chip hidden shrink-0 sm:inline-flex">
           {endpoint.access === "admin" || endpoint.access === "owner" ? (
             <LockIcon size={10} />
           ) : null}
           {ACCESS_LABEL[endpoint.access]}
         </span>
+        {(endpoint.access === "admin" || endpoint.access === "owner") && (
+          <span className="chip shrink-0 sm:hidden" title={ACCESS_LABEL[endpoint.access]}>
+            <LockIcon size={10} />
+          </span>
+        )}
       </button>
 
       {open && (
