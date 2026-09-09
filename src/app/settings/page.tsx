@@ -1,13 +1,46 @@
 import type { Metadata } from "next";
+import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { verifiedClaims } from "@/lib/supabase/claims";
+import type { Device } from "@/lib/devices";
 import { SettingsForm } from "./settings-form";
+import { Devices } from "./devices";
 import { MotionToggle } from "@/components/motion-toggle";
 import { LockIcon, TrophyIcon, ArrowRightIcon } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Settings" };
 
+/**
+ * Ends one session.
+ *
+ * revoke_device() checks ownership itself — without `s.user_id = auth.uid()` in
+ * that function, any signed-in user could end anyone's session — so this is a
+ * convenience over a rule that holds without it.
+ */
+async function signOutDevice(sessionId: string) {
+  "use server";
+
+  await requireUser();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("revoke_device", { p_session_id: sessionId });
+  if (error) return { ok: false, message: error.message };
+  if (data !== true) return { ok: false, message: "That session was already gone." };
+
+  revalidatePath("/settings");
+  return { ok: true, message: "Signed out. That device will be asked to sign in again." };
+}
+
 export default async function SettingsPage() {
   const { user, profile } = await requireUser();
+  const supabase = await createClient();
+
+  const [claims, devicesResult] = await Promise.all([
+    verifiedClaims(supabase),
+    supabase.rpc("my_devices"),
+  ]);
+  const devices = (devicesResult.data ?? []) as Device[];
 
   return (
     <div className="rise mx-auto max-w-xl space-y-6">
@@ -22,6 +55,12 @@ export default async function SettingsPage() {
       <div className="card p-6">
         <SettingsForm profile={profile} />
       </div>
+
+      <Devices
+        devices={devices}
+        currentSessionId={claims?.sessionId ?? null}
+        action={signOutDevice}
+      />
 
       <section className="card p-6">
         <h2 className="text-sm font-semibold">Motion</h2>

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Credit Count">
+  <!--
+    The brand mark: a lift hill, a drop, and an airtime hill — the same shape as
+    CoasterMark in the header, redrawn in a 32-unit box with a heavier stroke so
+    it survives being 16 pixels wide.
+
+    Modern browsers take this in preference to favicon.ico, and it stays sharp
+    at any size. The .ico is still there for Safari, which does not read SVG
+    favicons; scripts/build-icons.mjs generates it from the same path.
+
+    The tab strip is not the page, so this carries its own background rather
+    than inheriting one — a transparent mark disappears against whichever of
+    the two the browser happens to use. It does follow the system theme, which
+    is the one thing a favicon can respond to.
+  -->
+  <style>
+    .plate { fill: #fffbf6 }
+    .mark  { stroke: #b8391b }
+    @media (prefers-color-scheme: dark) {
+      .plate { fill: #1c1210 }
+      .mark  { stroke: #f2643c }
+    }
+  </style>
+
+  <rect class="plate" width="32" height="32" rx="7" />
+
+  <g transform="translate(4.5 4.5) scale(0.9583)">
+    <path
+      class="mark"
+      d="M2 20V8.5L8.4 3v11.2c0 2 1.4 3.2 3.1 3.2 1.9 0 3.2-1.4 3.2-3.4V9.8c0-1.4 1-2.4 2.3-2.4 1.3 0 2.3 1 2.3 2.4V20"
+      fill="none"
+      stroke-width="3"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>

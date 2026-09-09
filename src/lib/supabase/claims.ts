@@ -25,22 +25,21 @@ import type { JWK, SupabaseClient } from "@supabase/supabase-js";
  * the round trip this exists to remove. A warm function instance fetches them
  * once.
  *
- * ## What this gives up, and why that is the right trade
+ * ## What this gives up, and how it is bought back
  *
  * `getUser()` asks "is this token still good RIGHT NOW", so it notices a
- * session signed out elsewhere immediately. Local verification does not: a
- * revoked token keeps working until it expires.
+ * session signed out elsewhere immediately. Signature verification alone cannot
+ * see that: a revoked token stays cryptographically valid until it expires.
  *
- * That sounds like a weakening, and it is not, because PostgREST — the thing
- * that actually enforces row-level security — validates the JWT the same way:
- * signature and expiry, locally, with no revocation check. The application
- * layer was being stricter than the data layer at a cost of half a second per
- * request, while the database was always going to honour that token anyway.
- * Making the two agree does not widen what anyone can reach.
+ * So the revocation check moved rather than disappearing. The `session_id`
+ * claim is carried through below, and `session_user()` in the database returns
+ * the profile AND whether that session still exists — in the single round trip
+ * the profile lookup was already costing. Signing a device out takes effect on
+ * that device's very next request, which is what asking Auth every time bought,
+ * at none of the price.
  *
- * Where it genuinely matters, the app still fails closed for a different
- * reason: a deleted user has no profile row, and `getSessionUser` returns null
- * when the profile is missing.
+ * The app also fails closed for an unrelated reason: a deleted user has no
+ * profile row, and `getSessionUser` returns null without one.
  */
 
 interface Jwks {
@@ -83,6 +82,14 @@ async function getJwks(): Promise<Jwks | null> {
 export interface SessionClaims {
   sub: string;
   email?: string;
+  /**
+   * Which session minted this token.
+   *
+   * Carried so a caller can ask whether that session still exists — the one
+   * thing local verification cannot see, and what makes signing a device out
+   * take effect immediately rather than at the token's expiry.
+   */
+  sessionId?: string;
 }
 
 /**
@@ -103,7 +110,11 @@ export async function verifiedClaims(
       // not skip.
       const { data, error } = await supabase.auth.getClaims(undefined, { jwks });
       if (!error && data?.claims?.sub) {
-        return { sub: String(data.claims.sub), email: data.claims.email as string | undefined };
+        return {
+          sub: String(data.claims.sub),
+          email: data.claims.email as string | undefined,
+          sessionId: data.claims.session_id as string | undefined,
+        };
       }
       // An invalid signature or a genuinely expired token: no session.
       if (error) return null;
@@ -123,5 +134,24 @@ export async function verifiedClaims(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  return user ? { sub: user.id, email: user.email } : null;
+  if (!user) return null;
+
+  // The fallback path has no verified claims to read the session from, so it
+  // decodes the token's payload for it. Safe here precisely because getUser()
+  // has just vouched for that token.
+  const { data: session } = await supabase.auth.getSession();
+  let sessionId: string | undefined;
+  try {
+    const token = session.session?.access_token;
+    if (token) {
+      const payload = JSON.parse(
+        Buffer.from(token.split(".")[1], "base64url").toString("utf8"),
+      );
+      sessionId = payload.session_id;
+    }
+  } catch {
+    sessionId = undefined;
+  }
+
+  return { sub: user.id, email: user.email, sessionId };
 }
