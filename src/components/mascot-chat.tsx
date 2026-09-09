@@ -83,7 +83,7 @@ export function MascotChat({
               Ask Rusty
             </h2>
             <p className="truncate text-xs text-[var(--ink-3)]">
-              Rollercoasters and theme parks only — he is a specialist.
+              Rollercoasters and theme parks only — she is a specialist.
             </p>
           </div>
           <button
@@ -96,8 +96,8 @@ export function MascotChat({
           </button>
         </header>
 
-        {/* The bottom padding is Rusty's headroom: he stands up out of the
-            composer into this area, so the newest message has to clear him. */}
+        {/* The bottom padding is Rusty's headroom: she stands up out of the
+            composer into this area, so the newest message has to clear her. */}
         <div
           ref={scroller}
           className="flex-1 space-y-4 overflow-y-auto px-5 pb-5 pt-5 sm:pb-[13.5rem]"
@@ -170,9 +170,9 @@ export function MascotChat({
           )}
         </div>
 
-        {/* The composer is Rusty's parapet in here: he stands behind its top
+        {/* The composer is Rusty's parapet in here: she stands behind its top
             edge, the same pose as on the dashboard card with the border moved.
-            Nothing of him crosses into this row, so the controls need no
+            Nothing of her crosses into this row, so the controls need no
             clearance of their own. */}
         <div className="relative border-t border-[var(--line)] px-5 pb-5 pt-4">
           <div className="mascot-perch-top mascot-perch-chat pointer-events-none absolute right-2 hidden sm:block">

@@ -11,7 +11,7 @@ import { ArrowRightIcon, SparkIcon } from "@/components/icons";
  * The dashboard's mascot card.
  *
  * Rusty leans out from behind the card's bottom edge, which acts as the parapet
- * of his cab and crops him there. The card therefore clips — as a Tailwind
+ * of her cab and crops her there. The card therefore clips — as a Tailwind
  * utility rather than a bare rule, because unlayered CSS beats every @layer and
  * would silently win against it.
  *
@@ -99,7 +99,7 @@ export function MascotCard() {
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold tracking-tight">Ask Rusty</h2>
           <p className="text-xs text-[var(--ink-3)]">
-            The house engineer. Coasters and parks only — he is a specialist.
+            The house engineer. Coasters and parks only — she is a specialist.
           </p>
         </div>
 
@@ -110,8 +110,8 @@ export function MascotCard() {
           </span>
 
           <p className="mt-3 max-w-prose text-sm leading-relaxed text-[var(--ink-2)]">
-            Ask him about a ride&rsquo;s history, who built it, what a park&rsquo;s scene is like, or
-            where to point your next trip. He gets a bit sheepish about anything else.
+            Ask her about a ride&rsquo;s history, who built it, what a park&rsquo;s scene is like, or
+            where to point your next trip. She gets a bit sheepish about anything else.
           </p>
 
           <form
@@ -146,7 +146,7 @@ export function MascotCard() {
             </button>
           )}
 
-          {/* He leans out from behind the card's bottom edge, which crops him
+          {/* She leans out from behind the card's bottom edge, which crops her
               there — .mascot-perch does the alignment at either size. */}
           <div className="mascot-perch mascot-perch-card mascot-arrive pointer-events-none absolute -right-2 -z-10 sm:right-2">
             <Mascot emotion={pending ? "thinking" : emotion} />

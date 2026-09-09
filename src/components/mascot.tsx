@@ -13,11 +13,11 @@ import type { Emotion } from "@/lib/mascot-shared";
  *
  * ## The pose
  *
- * He leans out from behind a parapet. LEDGE_Y is the line where that parapet
- * passes, the torso is clipped against it, and the container crops him there —
+ * She leans out from behind a parapet. LEDGE_Y is the line where that parapet
+ * passes, the torso is clipped against it, and the container crops her there —
  * so what you see is a bust in dungarees, not a floating cut-out.
  *
- * He had crossed forearms resting on that ledge through three drafts and they
+ * She had crossed forearms resting on that ledge through three drafts and they
  * never read: folded arms need the elbows, the overlap and both hands to be
  * legible at 200 pixels, and at that size they collapse into one lump whatever
  * you do with the shading. Cutting them is what let the costume become the
@@ -38,7 +38,7 @@ import type { Emotion } from "@/lib/mascot-shared";
  *   - Lids over a whole eyeball. Squinting by deleting the eye and drawing an
  *     arc is the classic mistake — it reads as dead. The eyeball stays; lids
  *     come down over it.
- *   - Where he is looking. A thought goes up and away, embarrassment goes down
+ *   - Where she is looking. A thought goes up and away, embarrassment goes down
  *     and away, and both pupils always agree with each other.
  */
 
@@ -51,7 +51,7 @@ const VIEW_H = 300;
  * The parapet line, in user units.
  *
  * With no arms to rest on it, nothing hangs over the edge any more: the line is
- * the bottom of the box, and the container clips him there. He reads as leaning
+ * the bottom of the box, and the container clips her there. She reads as leaning
  * out from behind a counter rather than over a wall.
  *
  * Kept as a named constant rather than inlined because it is what the torso is
@@ -59,6 +59,22 @@ const VIEW_H = 300;
  * CSS cannot read this file, so the two are kept in step by hand.
  */
 const LEDGE_Y = VIEW_H;
+
+/** The bust's silhouette. Shared by the fur fill, its contour, and the shirt. */
+const TORSO = "M 56 300 C 58 211 104 190 150 190 C 196 190 242 211 244 300 Z";
+
+/**
+ * Where the shirt stops and her arms carry on.
+ *
+ * This is the whole canvas with two corners bitten out of it, and clipping the
+ * shirt to it is what puts a sleeve on her without drawing a sleeve: the fur
+ * already under there simply shows through below the hem. Drawing arm shapes on
+ * top would mean inventing limbs the pose does not have.
+ */
+const SLEEVE_HEM =
+  "M -20 -20 L 320 -20 L 320 260 L 228 260 " +
+  "C 218 270 208 283 198 300 L 102 300 " +
+  "C 92 283 82 270 72 260 L -20 260 Z";
 
 /**
  * The head is deliberately smaller than a first pass wants it to be. A big head
@@ -79,7 +95,7 @@ const EASE = "460ms var(--ease-out)";
 type Mouth = "smile" | "smile-small" | "smile-open" | "grin" | "o" | "purse" | "wavy" | "frown";
 
 /**
- * The thought bubbling beside his head.
+ * The thought bubbling beside her head.
  *
  * These are the cartoon shorthand that does what a drawn face cannot: a
  * question mark says "working on it" in a way no arrangement of eyebrows can.
@@ -94,7 +110,7 @@ interface Face {
   browInner: number;
   /** Outer end of the brow. Positive is down. */
   browOuter: number;
-  /** Extra lift on his right brow only. Asymmetry is what reads as thought. */
+  /** Extra lift on her right brow only. Asymmetry is what reads as thought. */
   asymmetry: number;
   /** Fraction of the eye covered from the top. */
   lidTop: number;
@@ -102,14 +118,14 @@ interface Face {
   lidBottom: number;
   /** Eyeball scale. Wide eyes are bigger, not just more open. */
   eyeScale: number;
-  /** Pupil offset in user units: where he is looking. */
+  /** Pupil offset in user units: where she is looking. */
   look: [number, number];
   mouth: Mouth;
   /** Ear droop in degrees. Negative perks them up. */
   ears: number;
   /** Head tilt in degrees. */
   tilt: number;
-  /** Whether he blinks. A startled character holds his eyes open. */
+  /** Whether she blinks. A startled character holds her eyes open. */
   blink: boolean;
   /** Idle motion: "breathe" is resting, "bob" excited, "still" braced. */
   motion: "breathe" | "bob" | "still";
@@ -123,8 +139,8 @@ const FACES: Record<Emotion, Face> = {
     mouth: "smile", ears: 0, tilt: 0, blink: true, motion: "breathe",
   },
 
-  // Up and to his left, one brow raised, mouth pushed off-centre, and a
-  // question mark surfacing beside his head. The tilt agrees with the look —
+  // Up and to her left, one brow raised, mouth pushed off-centre, and a
+  // question mark surfacing beside her head. The tilt agrees with the look —
   // a head tilted one way with eyes the other reads as suspicion, not thought.
   thinking: {
     // The pupils go up only far enough to leave the centre — pushed to the very
@@ -153,7 +169,7 @@ const FACES: Record<Emotion, Face> = {
   },
 
   // Reminiscing is a quiet face, not a grin: half-lidded, looking softly past
-  // you, with the engine's steam drifting up beside him.
+  // you, with the engine's steam drifting up beside her.
   history: {
     browY: -3, browInner: -5, browOuter: 2, asymmetry: -4,
     lidTop: 0.36, lidBottom: 0.12, eyeScale: 1, look: [-5, -4],
@@ -187,7 +203,7 @@ const FACES: Record<Emotion, Face> = {
   },
 
   // Inner brows down and outer up — the exact reverse of sheepish, and the
-  // reason this reads as anger rather than as a frown. He huffs.
+  // reason this reads as anger rather than as a frown. She huffs.
   stern: {
     browY: 3, browInner: 7, browOuter: -6, asymmetry: 0,
     lidTop: 0.42, lidBottom: 0.18, eyeScale: 1, look: [0, 2],
@@ -198,7 +214,7 @@ const FACES: Record<Emotion, Face> = {
 
 /* ------------------------------------------------------------- fragments -- */
 
-/** Floppy hound ear, authored once and mirrored. `side` is -1 (his right). */
+/** Floppy hound ear, authored once and mirrored. `side` is -1 (her right). */
 function earPath(side: -1 | 1) {
   const x = (d: number) => 150 + side * d;
   return [
@@ -268,7 +284,7 @@ function Mouth({ shape }: { shape: Mouth }) {
   }
 }
 
-/** The punctuation that floats beside his head while he thinks or reacts. */
+/** The punctuation that floats beside her head while she thinks or reacts. */
 function Glyph({ kind }: { kind: "question" | "exclaim" }) {
   const paint = {
     fill: "none",
@@ -340,10 +356,18 @@ export function Mascot({
       style={{ display: "block", width: "100%", height: "auto", overflow: "visible" }}
     >
       <defs>
-        {/* His belly is behind the parapet, so nothing of the body may be drawn
+        {/* Her belly is behind the parapet, so nothing of the body may be drawn
             below the ledge line. The arms are outside this clip on purpose. */}
         <clipPath id={id("above-ledge")}>
           <rect x={-40} y={-40} width={VIEW_W + 80} height={LEDGE_Y + 40} />
+        </clipPath>
+        {/* Nested on the shirt group below, these intersect: the stripes are
+            confined to the body AND to the area above the sleeve hem. */}
+        <clipPath id={id("torso")}>
+          <path d={TORSO} />
+        </clipPath>
+        <clipPath id={id("sleeve")}>
+          <path d={SLEEVE_HEM} />
         </clipPath>
         {([-1, 1] as const).map((side) => (
           <clipPath key={side} id={id(`eye${side > 0 ? "r" : "l"}`)}>
@@ -406,27 +430,55 @@ export function Mascot({
             silhouette is a clean bust and the overalls finally have room to be
             the costume rather than a sliver of blue behind a limb. */}
         <g clipPath={`url(#${id("above-ledge")})`}>
-          {/* A shirt, not bare fur. Denim laid straight onto a dog reads as a
-              bib stuck to an animal; a garment underneath is what makes the
-              dungarees look worn rather than applied. */}
+          {/* The body is fur, and the shirt is laid over it — which is what
+              leaves the tops of her arms bare below the sleeve hems without a
+              single arm being drawn. */}
+          <path d={TORSO} fill="var(--mascot-fur)" />
+
+          {/* A railwayman's striped shirt. The stripes are plain bands clipped
+              to the body and to the sleeve line; the two clips are nested so
+              they intersect rather than one winning. */}
+          <g clipPath={`url(#${id("torso")})`}>
+            <g clipPath={`url(#${id("sleeve")})`}>
+              <rect x={40} y={180} width={220} height={124} fill="var(--mascot-shirt)" />
+              {[188, 206, 224, 242, 260, 278, 296].map((y) => (
+                <rect
+                  key={y}
+                  x={40} y={y} width={220} height={9}
+                  fill="var(--mascot-shirt-stripe)"
+                />
+              ))}
+            </g>
+          </g>
+
+          {/* The hems themselves, and then the body's own contour redrawn so the
+              stripes cannot run over the silhouette. */}
           <path
-            d="M 48 300 C 50 208 100 186 150 186 C 200 186 250 208 252 300 Z"
-            fill="var(--mascot-shirt)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
+            d="M 72 260 C 82 270 92 283 102 300"
+            stroke={LINE} strokeWidth={STROKE} fill="none" strokeLinecap="round"
+          />
+          <path
+            d="M 228 260 C 218 270 208 283 198 300"
+            stroke={LINE} strokeWidth={STROKE} fill="none" strokeLinecap="round"
+          />
+          <path
+            d={TORSO}
+            fill="none" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
           />
 
           {/* Straps. Straight bands, because from the front that is what a
               shoulder strap is — the curved round-capped strokes they replace
-              read as two blue blobs sitting on his shoulders. Each is stroked
+              read as two blue blobs sitting on her shoulders. Each is stroked
               twice, wide in the line colour then narrower in denim, which is how
               a stroked band gets a contour. */}
           {([-1, 1] as const).map((side) => (
             <g key={side}>
               <path
-                d={`M ${150 + side * 32} 222 L ${150 + side * 42} 193`}
+                d={`M ${150 + side * 32} 222 L ${150 + side * 40} 197`}
                 stroke={LINE} strokeWidth={21} strokeLinecap="butt" fill="none"
               />
               <path
-                d={`M ${150 + side * 32} 222 L ${150 + side * 42} 193`}
+                d={`M ${150 + side * 32} 222 L ${150 + side * 40} 197`}
                 stroke="var(--mascot-denim)" strokeWidth={15} strokeLinecap="butt" fill="none"
               />
             </g>
@@ -572,6 +624,30 @@ export function Mascot({
                   fill="none" stroke={LINE} strokeWidth={STROKE}
                   style={{ transition: `all ${EASE}` }}
                 />
+
+                {/* Three lashes fanning from the outer corner. They are the
+                    only marker of her sex on the character — deliberately not
+                    blush or a painted mouth, which read as makeup on an animal
+                    rather than as the animal being female. Drawn outside the
+                    eye's clip so a lowered lid never crops them, and placed by
+                    parametric angle on the ellipse so they stay seated when
+                    eyeScale changes. */}
+                {[190, 212, 234].map((base, i) => {
+                  const t = ((side < 0 ? base : 540 - base) * Math.PI) / 180;
+                  const dx = Math.cos(t);
+                  const dy = Math.sin(t);
+                  return (
+                    <path
+                      key={i}
+                      d={
+                        `M ${cx + rx * dx} ${EYE.y + ry * dy} ` +
+                        `L ${cx + rx * 1.38 * dx} ${EYE.y + ry * 1.38 * dy}`
+                      }
+                      stroke={LINE} strokeWidth={3.4} strokeLinecap="round"
+                      style={{ transition: `all ${EASE}` }}
+                    />
+                  );
+                })}
               </g>
             );
           })}
@@ -582,7 +658,7 @@ export function Mascot({
             const lift = face.browY + (side < 0 ? face.asymmetry : 0);
             // "Inner" is the end nearest the middle of the face, whichever side
             // of the face that happens to be on.
-            // For his right eye (side -1, cx 122) the end NEAREST the face's
+            // For her right eye (side -1, cx 122) the end NEAREST the face's
             // centre is cx + 24, not cx - 24. Getting this backwards silently
             // inverted every expression: stern wore sheepish's brows and vice
             // versa, which is why the faces read as almost-right and wrong.
@@ -609,7 +685,7 @@ export function Mascot({
           <path d="M 150 152 L 150 172" stroke={LINE} strokeWidth={4} strokeLinecap="round" />
           <Mouth shape={face.mouth} />
 
-          {/* The anger mark, on his forehead. It lives inside the head group
+          {/* The anger mark, on her forehead. It lives inside the head group
               so it travels with a head tilt. */}
           {face.prop === "huff" && (
             <g
@@ -681,8 +757,8 @@ export function Mascot({
         )}
 
         {/* An irritated huff out of both nostrils — the cartoon shorthand for a
-            character holding his temper, which is exactly the register wanted
-            when he is declining something rather than losing his mind. */}
+            character holding her temper, which is exactly the register wanted
+            when she is declining something rather than losing her mind. */}
         {face.prop === "huff" &&
           ([-1, 1] as const).map((side) =>
             [0, 1].map((i) => (

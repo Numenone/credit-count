@@ -90,9 +90,11 @@
   --mascot-cap: #e8622a;
   --mascot-denim: #47638f;
   --mascot-denim-dark: #33486c;
-  /* Warm oatmeal rather than off-white: against a white card an off-white
-     shirt leaves the outline doing all the work of holding his silhouette. */
-  --mascot-shirt: #e3d5bd;
+  /* A railwayman's striped work shirt. The white bands merge with a light
+     card, so the blue ones and the contour are what carry the silhouette
+     there — which is why the stripe is a real step in value, not a tint. */
+  --mascot-shirt: #ffffff;
+  --mascot-shirt-stripe: #a5cce8;
   --mascot-brass: #e8b04a;
   --mascot-scarf: #c8392c;
   --mascot-scarf-dark: #96271d;
