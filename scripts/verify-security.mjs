@@ -291,6 +291,53 @@ console.log("\nMascot rate limit");
   });
   check("the daily ceiling refuses independently of the burst window",
     dayCapped.data === false);
+
+  // A refusal must not spend the day. The burst window and the daily ceiling
+  // shared one counter once, and every attempt incremented it, so the refusal
+  // that says "try again shortly" charged a retry against the day's answers.
+  // Eight questions and a few retries cost sixty.
+  //
+  // Proven behaviourally: mascot_usage has no policies and cannot be read from
+  // here. The first version of this check needed an untouched five-minute
+  // window and failed whenever the suite ran twice inside one, which is a
+  // check that reports on the clock rather than on the code. Asking for
+  // max_turns of zero refuses every call whatever the window already holds, so
+  // this depends on no prior state.
+  const fresh = await signedIn(env("E2E_ADMIN_EMAIL"), env("E2E_ADMIN_PASSWORD"));
+
+  const REFUSALS = 120;
+  const refused = await Promise.all(
+    Array.from({ length: REFUSALS }, () =>
+      fresh.client
+        .rpc("claim_mascot_turn", { max_turns: 0, window_minutes: 5, max_per_day: 1000000 })
+        .then((r) => r.data),
+    ),
+  );
+  check(
+    `${REFUSALS} attempts against a burst limit of zero are all refused`,
+    refused.every((granted) => granted === false),
+    `${refused.filter((g) => g !== false).length} were not refused`,
+  );
+
+  // With burst headroom and a ceiling well under the number of refusals just
+  // made. If the day counted attempts it has spent at least 120 and this is
+  // refused; if it counts grants it has spent only what was actually answered.
+  const dayIntact = await fresh.client.rpc("claim_mascot_turn", {
+    max_turns: 1000000, window_minutes: 5, max_per_day: 100,
+  });
+  check(
+    `those ${REFUSALS} refusals did not spend the day`,
+    dayIntact.data === true,
+    dayIntact.error?.message ?? String(dayIntact.data),
+  );
+
+  // And the ceiling is still a ceiling: zero answers allowed refuses even with
+  // the whole burst window free.
+  const dayBites = await fresh.client.rpc("claim_mascot_turn", {
+    max_turns: 1000000, window_minutes: 5, max_per_day: 0,
+  });
+  check("...and the daily ceiling still refuses when it is spent",
+    dayBites.data === false, String(dayBites.data));
 }
 
 // ------------------------------------------------------ mascot observability --
@@ -416,14 +463,42 @@ console.log("\nConversations");
 
   const conversationId = started.data;
 
+  // Three exchanges, not one. Both rows of an exchange share a created_at,
+  // because now() is the transaction's start time rather than the clock, so
+  // ordering by it alone left the tie to the planner. A single exchange gave
+  // that a coin flip and this check passed twice before it caught it.
+  for (const n of [2, 3]) {
+    const more = await a.client.rpc("append_exchange", {
+      p_conversation_id: conversationId,
+      p_question: `security check: question ${n}`,
+      p_answer: `security check: answer ${n}`,
+      p_emotion: "curious",
+    });
+    if (more.error) throw new Error(`could not append exchange ${n}: ${more.error.message}`);
+  }
+
   const history = await a.client.rpc("conversation_history", {
     p_conversation_id: conversationId,
     p_turns: 6,
   });
+  const roles = (history.data ?? []).map((turn) => turn.role).join(",");
   check(
-    "and read it back in order, question first",
-    (history.data ?? []).length === 2 && history.data[0].role === "user",
-    history.error?.message ?? JSON.stringify(history.data),
+    "and read it back oldest first, every question before its answer",
+    roles === "user,assistant,user,assistant,user,assistant",
+    history.error?.message ?? roles,
+  );
+
+  // The limit must cut whole exchanges off the front, never leave an answer
+  // whose question was trimmed away.
+  const trimmed = await a.client.rpc("conversation_history", {
+    p_conversation_id: conversationId,
+    p_turns: 2,
+  });
+  check(
+    "and trimming to the last two turns keeps the pair, not half of it",
+    (trimmed.data ?? []).map((t) => t.role).join(",") === "user,assistant" &&
+      trimmed.data[0].body.endsWith("question 3"),
+    trimmed.error?.message ?? JSON.stringify(trimmed.data),
   );
 
   // The table has no insert policy at all. This is what stops someone writing
