@@ -13,11 +13,15 @@ Built for the Koin Limited AI Product Engineer task from the accompanying Statem
 
 **https://credit-count-iota.vercel.app**
 
-| Role       | Email                        | Password             | State                          |
-| ---------- | ---------------------------- | -------------------- | ------------------------------ |
-| Enthusiast | `enthusiast@creditcount.app` | `[rotated, removed from history]` | 18 credits / 23 rides, opted in |
-| Enthusiast | `rival@creditcount.app`      | `[rotated, removed from history]` | 15 credits / 18 rides, opted in |
-| Admin      | `admin@creditcount.app`      | `[rotated, removed from history]`  | 5 credits, **not** opted in     |
+| Role       | Email                        | State                           |
+| ---------- | ---------------------------- | ------------------------------- |
+| Enthusiast | `enthusiast@creditcount.app` | 18 credits / 23 rides, opted in |
+| Enthusiast | `rival@creditcount.app`      | 15 credits / 18 rides, opted in |
+| Admin      | `admin@creditcount.app`      | 5 credits, **not** opted in     |
+
+Passwords are supplied with the design document rather than here. An admin can raise the mascot's
+daily budget, so publishing that password in a public repository would be publishing a spending
+limit.
 
 The second enthusiast exists so the privacy boundary can be demonstrated rather than described: sign
 in as one and try to reach the other's rides. The admin is deliberately left off the leaderboard —
