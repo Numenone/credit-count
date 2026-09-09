@@ -110,8 +110,8 @@ export function MascotCard() {
           </span>
 
           <p className="mt-3 max-w-prose text-sm leading-relaxed text-[var(--ink-2)]">
-            Ask her about a ride&rsquo;s history, who built it, what a park&rsquo;s scene is like, or
-            where to point your next trip. She gets a bit sheepish about anything else.
+            Ask her about a ride&rsquo;s history, who built it, what a park&rsquo;s scene is like,
+            or where to point your next trip.
           </p>
 
           <form

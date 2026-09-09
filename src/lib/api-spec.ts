@@ -239,7 +239,7 @@ export const API_SPEC: EndpointGroup[] = [
   {
     name: "Mascot",
     description:
-      "The only endpoint that spends money, so it is the only one with a rate limit. The limit lives in Postgres on a table with RLS enabled and zero policies — the caller cannot read or reset their own allowance.",
+      "The only endpoint that spends money, so it is the only one rate limited. Both limits live in Postgres, on a table with RLS enabled and zero policies — the caller cannot read or reset their own allowance.",
     endpoints: [
       {
         id: "mascot-ask",
@@ -254,7 +254,7 @@ export const API_SPEC: EndpointGroup[] = [
           history: [],
         },
         refusal:
-          "401 without a session; 429 after 12 turns in five minutes; 422 for a message over 1000 characters or more than 12 history turns.",
+          "415 unless the body is application/json, which is what keeps this endpoint out of reach of a cross-site form post. 401 without a session. 429 after 8 turns in five minutes or 60 in a day. 422 for a message over 1000 characters, more than 6 history turns, or a history that is not a real alternating transcript.",
       },
     ],
   },

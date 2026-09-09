@@ -707,7 +707,14 @@ body {
   100%    { opacity: 0; transform: translateY(-6px) scale(0.9); }
 }
 
-/* The anger mark on his forehead: a throb, not a spin. */
+/* Spirals for dizzy eyes, stars orbiting a rattled head, and a turning cog.
+   One keyframe serves all three; only the duration and the origin differ. */
+@keyframes rusty-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* The anger mark on her forehead: a throb, not a spin. */
 @keyframes rusty-vex {
   0%, 100% { opacity: 0.55; transform: scale(0.86); }
   22%      { opacity: 1; transform: scale(1.12); }

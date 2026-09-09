@@ -232,7 +232,7 @@ console.log("\nMascot rate limit");
 {
   const anon = anonClient();
 
-  const anonClaim = await anon.rpc("claim_mascot_turn", { max_turns: 12, window_minutes: 5 });
+  const anonClaim = await anon.rpc("claim_mascot_turn", { max_turns: 8, window_minutes: 5, max_per_day: 60 });
   check(
     "visitors cannot claim a mascot turn",
     anonClaim.error != null || anonClaim.data === false,
@@ -264,7 +264,7 @@ console.log("\nMascot rate limit");
   // account may see a 429 from the mascot for a few minutes after a run.
   let refusedAt = null;
   for (let i = 1; i <= 6 && refusedAt === null; i++) {
-    const { data } = await a.client.rpc("claim_mascot_turn", { max_turns: 3, window_minutes: 5 });
+    const { data } = await a.client.rpc("claim_mascot_turn", { max_turns: 3, window_minutes: 5, max_per_day: 500 });
     if (data === false) refusedAt = i;
   }
   check(
@@ -274,8 +274,18 @@ console.log("\nMascot rate limit");
   );
 
   // And it stays refused: a caller cannot reset the window by asking again.
-  const afterwards = await a.client.rpc("claim_mascot_turn", { max_turns: 3, window_minutes: 5 });
+  const afterwards = await a.client.rpc("claim_mascot_turn", {
+    max_turns: 3, window_minutes: 5, max_per_day: 500,
+  });
   check("a spent window cannot be reset by the caller", afterwards.data === false);
+
+  // The daily ceiling is a separate gate: a caller with burst headroom is still
+  // refused once the day's budget is gone. A burst limit is not a budget.
+  const dayCapped = await a.client.rpc("claim_mascot_turn", {
+    max_turns: 10000, window_minutes: 5, max_per_day: 1,
+  });
+  check("the daily ceiling refuses independently of the burst window",
+    dayCapped.data === false);
 }
 
 async function anyCoasterId(client) {

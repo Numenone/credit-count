@@ -92,7 +92,9 @@ const EASE = "460ms var(--ease-out)";
 
 /* ------------------------------------------------------------------ rig -- */
 
-type Mouth = "smile" | "smile-small" | "smile-open" | "grin" | "o" | "purse" | "wavy" | "frown";
+type Mouth =
+  | "smile" | "smile-small" | "smile-open" | "grin" | "o" | "ooh" | "gape"
+  | "purse" | "wavy" | "frown" | "smirk" | "tight" | "yawn";
 
 /**
  * The thought bubbling beside her head.
@@ -101,7 +103,9 @@ type Mouth = "smile" | "smile-small" | "smile-open" | "grin" | "o" | "purse" | "
  * question mark says "working on it" in a way no arrangement of eyebrows can.
  * Each one is anchored clear of the ears so it never collides with the head.
  */
-type Prop = "question" | "exclaim" | "steam" | "spark" | "pin" | "sweat" | "huff";
+type Prop =
+  | "question" | "exclaim" | "steam" | "spark" | "pin" | "sweat" | "huff"
+  | "swirl" | "zzz" | "note";
 
 interface Face {
   /** Vertical shift of the whole brow. Negative is raised. */
@@ -130,6 +134,10 @@ interface Face {
   /** Idle motion: "breathe" is resting, "bob" excited, "still" braced. */
   motion: "breathe" | "bob" | "still";
   prop?: Prop;
+  /** Closes one eye. -1 is her right, +1 her left. */
+  wink?: -1 | 1;
+  /** Replaces both irises with spirals. Only "dizzy" wants this. */
+  spiral?: boolean;
 }
 
 const FACES: Record<Emotion, Face> = {
@@ -153,6 +161,8 @@ const FACES: Record<Emotion, Face> = {
     prop: "question",
   },
 
+  /* -------------------------------------------------- warmth and agreement -- */
+
   happy: {
     browY: -2, browInner: -2, browOuter: -1, asymmetry: -1,
     lidTop: 0.06, lidBottom: 0.06, eyeScale: 1.02, look: [0, 0],
@@ -167,6 +177,50 @@ const FACES: Record<Emotion, Face> = {
     mouth: "grin", ears: -16, tilt: 4, blink: false, motion: "bob",
     prop: "spark",
   },
+
+  // A wink and a lopsided mouth. Amusement is asymmetric; a symmetric grin is
+  // just happiness with the volume turned up.
+  amused: {
+    browY: -4, browInner: -2, browOuter: -4, asymmetry: -5,
+    lidTop: 0.04, lidBottom: 0.14, eyeScale: 1.02, look: [2, 0],
+    mouth: "smirk", ears: -6, tilt: 3, blink: false, motion: "breathe",
+    wink: 1,
+  },
+
+  // The same wink, but the brow goes UP rather than the lid coming down, and
+  // the head tilts further — that is banter rather than a laugh.
+  cheeky: {
+    browY: -6, browInner: 1, browOuter: -8, asymmetry: -9,
+    lidTop: 0.06, lidBottom: 0.1, eyeScale: 1, look: [4, -1],
+    mouth: "smirk", ears: -9, tilt: 7, blink: false, motion: "breathe",
+    wink: -1,
+  },
+
+  // Pleased, and quietly so: eyes closed by the cheeks pushing up, chin level,
+  // ears relaxed. Pride that shows teeth reads as gloating.
+  proud: {
+    browY: -3, browInner: -3, browOuter: -2, asymmetry: -1,
+    lidTop: 0.05, lidBottom: 0.4, eyeScale: 1.04, look: [0, 0],
+    mouth: "smile", ears: -8, tilt: -2, blink: false, motion: "breathe",
+  },
+
+  impressed: {
+    browY: -8, browInner: -7, browOuter: -6, asymmetry: -3,
+    lidTop: 0, lidBottom: 0.06, eyeScale: 1.16, look: [0, -1],
+    mouth: "ooh", ears: -10, tilt: 2, blink: true, motion: "breathe",
+    prop: "spark",
+  },
+
+  // Impressed taken to its limit: everything opens at once and she stops
+  // moving, which is what separates awe from enthusiasm.
+  awestruck: {
+    browY: -13, browInner: -11, browOuter: -10, asymmetry: -2,
+    lidTop: 0, lidBottom: 0, eyeScale: 1.34, look: [0, -2],
+    mouth: "gape", ears: -18, tilt: 0, blink: false, motion: "still",
+    prop: "spark",
+  },
+
+  /* ------------------------------------------------------- subject matter -- */
 
   // Reminiscing is a quiet face, not a grin: half-lidded, looking softly past
   // you, with the engine's steam drifting up beside her.
@@ -186,11 +240,83 @@ const FACES: Record<Emotion, Face> = {
     prop: "pin",
   },
 
+  // Explaining the mechanism. Brows down but LEVEL — down and angled is anger;
+  // down and flat is concentration, and that one distinction is the whole
+  // difference between this face and `stern`.
+  focused: {
+    browY: 4, browInner: 2, browOuter: 2, asymmetry: 0,
+    lidTop: 0.2, lidBottom: 0.06, eyeScale: 1, look: [0, 0],
+    mouth: "tight", ears: -4, tilt: 0, blink: true, motion: "still",
+    prop: "note",
+  },
+
+  // Focused, plus forward momentum: the ears go back and the body leans in.
+  determined: {
+    browY: 3, browInner: 4, browOuter: -2, asymmetry: 0,
+    lidTop: 0.16, lidBottom: 0.12, eyeScale: 1.02, look: [0, -1],
+    mouth: "tight", ears: -12, tilt: -3, blink: false, motion: "bob",
+  },
+
+  // Wistful rather than warm: a small smile, heavy eyes, and she is looking at
+  // something that is not there any more. `history` recounts; this one mourns.
+  nostalgic: {
+    browY: -2, browInner: -7, browOuter: 3, asymmetry: -3,
+    lidTop: 0.42, lidBottom: 0.14, eyeScale: 0.98, look: [-8, -3],
+    mouth: "smile-small", ears: 12, tilt: -7, blink: true, motion: "breathe",
+    prop: "steam",
+  },
+
+  /* --------------------------------------------- not following, or unsure -- */
+
+  // Leaning in. A big tilt and both brows up: curiosity is open and symmetric,
+  // where confusion below is lopsided.
+  curious: {
+    browY: -9, browInner: -8, browOuter: -7, asymmetry: -4,
+    lidTop: 0, lidBottom: 0.04, eyeScale: 1.1, look: [3, -2],
+    mouth: "ooh", ears: -12, tilt: 11, blink: true, motion: "breathe",
+  },
+
+  // One brow up and one down — the most legible way there is to draw "that did
+  // not parse" — with the eyes hunting off to one side.
+  confused: {
+    browY: -3, browInner: 5, browOuter: -4, asymmetry: -13,
+    lidTop: 0.16, lidBottom: 0.06, eyeScale: 1.02, look: [-9, 1],
+    mouth: "wavy", ears: 9, tilt: -9, blink: true, motion: "breathe",
+    prop: "question",
+  },
+
+  // Hedging a fact. Inner brows up as in sheepish, but the eyes go DOWN and to
+  // the side rather than away, and the ears only half drop.
+  uncertain: {
+    browY: -4, browInner: -9, browOuter: 4, asymmetry: -5,
+    lidTop: 0.3, lidBottom: 0.16, eyeScale: 0.98, look: [-6, 5],
+    mouth: "tight", ears: 14, tilt: 5, blink: true, motion: "breathe",
+    prop: "sweat",
+  },
+
   surprised: {
     browY: -11, browInner: -8, browOuter: -7, asymmetry: -2,
     lidTop: 0, lidBottom: 0, eyeScale: 1.32, look: [0, 1],
     mouth: "o", ears: -20, tilt: -4, blink: false, motion: "still",
     prop: "exclaim",
+  },
+
+  /* -------------------------------------- care, and the two ways to refuse -- */
+
+  // Inner brows up and the head tilted towards you. The mouth stays nearly
+  // closed: sympathy that smiles broadly reads as pity.
+  sympathetic: {
+    browY: -4, browInner: -12, browOuter: 3, asymmetry: -2,
+    lidTop: 0.24, lidBottom: 0.18, eyeScale: 1.02, look: [0, 2],
+    mouth: "smile-small", ears: 16, tilt: 8, blink: true, motion: "breathe",
+  },
+
+  // Warm and level. Everything relaxes, because this is the face for "you will
+  // be fine on it" and nothing on it may look tense.
+  reassuring: {
+    browY: -3, browInner: -5, browOuter: -1, asymmetry: -2,
+    lidTop: 0.16, lidBottom: 0.22, eyeScale: 1, look: [0, 1],
+    mouth: "smile", ears: 4, tilt: 4, blink: true, motion: "breathe",
   },
 
   // Inner brows up, outer down, eyes down and away, ears flat: the whole face
@@ -209,6 +335,22 @@ const FACES: Record<Emotion, Face> = {
     lidTop: 0.42, lidBottom: 0.18, eyeScale: 1, look: [0, 2],
     mouth: "frown", ears: 14, tilt: 0, blink: false, motion: "still",
     prop: "huff",
+  },
+
+  /* ------------------------------------------------------------- rattled -- */
+
+  dizzy: {
+    browY: -6, browInner: -4, browOuter: -3, asymmetry: -6,
+    lidTop: 0.04, lidBottom: 0.04, eyeScale: 1.1, look: [0, 0],
+    mouth: "wavy", ears: 18, tilt: -11, blink: false, motion: "breathe",
+    prop: "swirl", spiral: true,
+  },
+
+  sleepy: {
+    browY: 2, browInner: -3, browOuter: 3, asymmetry: -2,
+    lidTop: 0.62, lidBottom: 0.08, eyeScale: 0.98, look: [-2, 3],
+    mouth: "yawn", ears: 20, tilt: 7, blink: true, motion: "breathe",
+    prop: "zzz",
   },
 };
 
@@ -279,6 +421,39 @@ function Mouth({ shape }: { shape: Mouth }) {
         <g>
           <path d="M 128 173 Q 150 200 172 173 Z" {...cavity} />
           <path d="M 139 181 Q 150 192 161 181 Z" fill="var(--mascot-tongue)" />
+        </g>
+      );
+
+    // Lopsided on purpose: a symmetric half-smile is just a small smile.
+    case "smirk":
+      return <path d="M 133 180 Q 148 188 168 172" {...line} />;
+
+    // Pressed lips. Flat, with the faintest bow, which is concentration rather
+    // than the hard straight line of displeasure.
+    case "tight":
+      return <path d="M 133 178 Q 150 182 167 178" {...line} />;
+
+    case "ooh":
+      return (
+        <g>
+          <ellipse cx={150} cy={177} rx={8} ry={10} {...cavity} />
+          <ellipse cx={150} cy={183} rx={4} ry={2.5} fill="var(--mascot-tongue)" />
+        </g>
+      );
+
+    case "gape":
+      return (
+        <g>
+          <ellipse cx={150} cy={180} rx={16} ry={19} {...cavity} />
+          <ellipse cx={150} cy={192} rx={9} ry={5} fill="var(--mascot-tongue)" />
+        </g>
+      );
+
+    case "yawn":
+      return (
+        <g>
+          <ellipse cx={150} cy={180} rx={12} ry={17} {...cavity} />
+          <ellipse cx={150} cy={191} rx={7} ry={4.5} fill="var(--mascot-tongue)" />
         </g>
       );
   }
@@ -564,6 +739,35 @@ export function Mascot({
             const clip = `url(#${id(`eye${side > 0 ? "r" : "l"}`)})`;
             const top = EYE.y - ry;
 
+            // A wink is a closed eye, not a small one: the eyeball goes away
+            // entirely and a curved lash line takes its place. Drawing it as a
+            // very narrow eye reads as a squint on one side, which is a twitch.
+            if (face.wink === side) {
+              return (
+                <g key={side}>
+                  <path
+                    d={`M ${cx - rx} ${EYE.y + 2} Q ${cx} ${EYE.y - ry * 0.7} ${cx + rx} ${EYE.y + 2}`}
+                    stroke={LINE} strokeWidth={STROKE + 1} strokeLinecap="round" fill="none"
+                  />
+                  {[190, 212, 234].map((base, i) => {
+                    const t = ((side < 0 ? base : 540 - base) * Math.PI) / 180;
+                    const dx = Math.cos(t);
+                    const dy = Math.sin(t);
+                    return (
+                      <path
+                        key={i}
+                        d={
+                          `M ${cx + rx * dx} ${EYE.y + ry * dy * 0.5} ` +
+                          `L ${cx + rx * 1.3 * dx} ${EYE.y + ry * 1.05 * dy * 0.5}`
+                        }
+                        stroke={LINE} strokeWidth={3.4} strokeLinecap="round"
+                      />
+                    );
+                  })}
+                </g>
+              );
+            }
+
             return (
               <g key={side}>
                 <ellipse
@@ -573,25 +777,47 @@ export function Mascot({
                 />
 
                 <g clipPath={clip}>
-                  <circle
-                    cx={cx + face.look[0]} cy={EYE.y + face.look[1]} r={ry * 0.62}
-                    fill="var(--mascot-iris)" style={{ transition: `all ${EASE}` }}
-                  />
-                  <circle
-                    cx={cx + face.look[0]} cy={EYE.y + face.look[1]} r={ry * 0.38}
-                    fill="var(--mascot-pupil)" style={{ transition: `all ${EASE}` }}
-                  />
-                  {/* Two highlights: a big one for life, a small opposite one
-                      so the eye reads as a sphere rather than a sticker. */}
-                  <circle
-                    cx={cx + face.look[0] - ry * 0.22} cy={EYE.y + face.look[1] - ry * 0.3}
-                    r={ry * 0.2} fill="#ffffff" style={{ transition: `all ${EASE}` }}
-                  />
-                  <circle
-                    cx={cx + face.look[0] + ry * 0.28} cy={EYE.y + face.look[1] + ry * 0.26}
-                    r={ry * 0.09} fill="#ffffff" opacity={0.85}
-                    style={{ transition: `all ${EASE}` }}
-                  />
+                  {face.spiral ? (
+                    // Two turns of an Archimedean spiral, sampled rather than
+                    // hand-authored so it stays centred at any eyeScale.
+                    <path
+                      d={Array.from({ length: 30 }, (_, i) => {
+                        const a = (i / 29) * Math.PI * 4;
+                        const r = (a / (Math.PI * 4)) * ry * 0.86;
+                        const x = cx + r * Math.cos(a);
+                        const y = EYE.y + r * Math.sin(a);
+                        return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+                      }).join(" ")}
+                      stroke="var(--mascot-pupil)" strokeWidth={3} fill="none"
+                      strokeLinecap="round"
+                      style={{
+                        transformOrigin: `${cx}px ${EYE.y}px`,
+                        animation: `rusty-spin ${side > 0 ? 2.6 : 3.1}s linear infinite`,
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <circle
+                        cx={cx + face.look[0]} cy={EYE.y + face.look[1]} r={ry * 0.62}
+                        fill="var(--mascot-iris)" style={{ transition: `all ${EASE}` }}
+                      />
+                      <circle
+                        cx={cx + face.look[0]} cy={EYE.y + face.look[1]} r={ry * 0.38}
+                        fill="var(--mascot-pupil)" style={{ transition: `all ${EASE}` }}
+                      />
+                      {/* Two highlights: a big one for life, a small opposite
+                          one so the eye reads as a sphere, not a sticker. */}
+                      <circle
+                        cx={cx + face.look[0] - ry * 0.22} cy={EYE.y + face.look[1] - ry * 0.3}
+                        r={ry * 0.2} fill="#ffffff" style={{ transition: `all ${EASE}` }}
+                      />
+                      <circle
+                        cx={cx + face.look[0] + ry * 0.28} cy={EYE.y + face.look[1] + ry * 0.26}
+                        r={ry * 0.09} fill="#ffffff" opacity={0.85}
+                        style={{ transition: `all ${EASE}` }}
+                      />
+                    </>
+                  )}
 
                   {/* Lids are fur laid over the whole eyeball. */}
                   <rect
@@ -745,6 +971,66 @@ export function Mascot({
               fill="var(--mascot-scarf)" stroke={LINE} strokeWidth={3} strokeLinejoin="round"
             />
             <circle cx={258} cy={53} r={7.5} fill="var(--mascot-shirt)" stroke={LINE} strokeWidth={3} />
+          </g>
+        )}
+
+        {/* Stars going round her head. The classic, and the only reading of
+            "dizzy" that survives at this size. */}
+        {face.prop === "swirl" &&
+          [0, 1, 2].map((i) => (
+            <g
+              key={i}
+              style={{
+                transformOrigin: "150px 60px",
+                animation: `rusty-spin 2.4s linear ${i * -0.8}s infinite`,
+              }}
+            >
+              <path
+                d="M 150 26 l 4 11 11 4 -11 4 -4 11 -4 -11 -11 -4 11 -4 Z"
+                fill="var(--mascot-brass)" stroke={LINE} strokeWidth={2.5}
+                strokeLinejoin="round"
+                transform="translate(0 34)"
+              />
+            </g>
+          ))}
+
+        {face.prop === "zzz" &&
+          [0, 1, 2].map((i) => (
+            <text
+              key={i}
+              x={236 + i * 12} y={72 - i * 20}
+              fontSize={20 + i * 6} fontFamily="ui-sans-serif, system-ui, sans-serif"
+              fontWeight={700} fill="var(--mascot-denim)" stroke={LINE} strokeWidth={1.6}
+              style={{
+                transformOrigin: `${236 + i * 12}px ${72 - i * 20}px`,
+                animation: `puff 3.4s ease-in-out ${i * 0.5}s infinite`,
+              }}
+            >
+              z
+            </text>
+          ))}
+
+        {/* A cog, for when she is explaining how something works. */}
+        {face.prop === "note" && (
+          <g
+            style={{
+              transformOrigin: "250px 58px",
+              animation: "rusty-spin 6s linear infinite",
+            }}
+          >
+            {Array.from({ length: 8 }, (_, i) => (
+              <rect
+                key={i}
+                x={246} y={30} width={8} height={10} rx={2}
+                fill="var(--mascot-denim)" stroke={LINE} strokeWidth={2}
+                transform={`rotate(${i * 45} 250 58)`}
+              />
+            ))}
+            <circle
+              cx={250} cy={58} r={16}
+              fill="var(--mascot-denim)" stroke={LINE} strokeWidth={3}
+            />
+            <circle cx={250} cy={58} r={6} fill="var(--mascot-shirt)" stroke={LINE} strokeWidth={2.5} />
           </g>
         )}
 
