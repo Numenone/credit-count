@@ -73,8 +73,8 @@
      A cartoon character keeps his own colours in both themes — a dog that
      changes coat when you flip the theme stops being a character and starts
      being a UI element. So these are defined once and deliberately NOT
-     re-declared under dark mode; only the two props that have to read against
-     the surface behind them (steam, shadow) are theme-scoped further down.
+     re-declared under dark mode; only the steam, which is drawn against the
+     card rather than against him, is theme-scoped further down.
      The cap borrows the brand colour so he belongs to this app. */
   --mascot-fur: #dda56a;
   --mascot-fur-mid: #c88b4c;
@@ -85,7 +85,6 @@
   --mascot-iris: #7a4a1f;
   --mascot-pupil: #241505;
   --mascot-tongue: #e2757f;
-  --mascot-blush: #e08774;
   --mascot-cap: #e8622a;
   --mascot-cap-dark: #b8410f;
   --mascot-cap-stripe: #fbf1e2;
@@ -685,6 +684,32 @@ body {
   50%      { opacity: 1; transform: translateY(4px); }
 }
 
+/* The question mark beside his head while he thinks: it surfaces, hangs there
+   long enough to be read, then dissolves. The long tail at 0% is the pause
+   between thoughts — without it the mark pulses like a notification badge. */
+@keyframes rusty-wonder {
+  0%, 100% { opacity: 0; transform: translateY(8px) scale(0.8) rotate(-8deg); }
+  22%      { opacity: 1; transform: translateY(0) scale(1) rotate(3deg); }
+  62%      { opacity: 1; transform: translateY(-4px) scale(1.02) rotate(-2deg); }
+  82%      { opacity: 0; transform: translateY(-12px) scale(0.94) rotate(4deg); }
+}
+
+/* Surprise arrives all at once and then settles — a snap, not a fade. */
+@keyframes rusty-alarm {
+  0%      { opacity: 0; transform: translateY(14px) scale(0.4); }
+  16%     { opacity: 1; transform: translateY(-3px) scale(1.18); }
+  28%     { transform: translateY(0) scale(1); }
+  76%     { opacity: 1; transform: translateY(0) scale(1); }
+  100%    { opacity: 0; transform: translateY(-6px) scale(0.9); }
+}
+
+/* Two puffs out of each nostril, drifting down and away. */
+@keyframes rusty-huff {
+  0%   { opacity: 0; transform: translateY(-4px) scale(0.4); }
+  30%  { opacity: 0.85; }
+  100% { opacity: 0; transform: translateY(14px) scale(1.3); }
+}
+
 /* The ledge the character rests on: his paws deliberately cross this edge, so
    the card must not clip them. */
 .mascot-ledge {
@@ -705,18 +730,18 @@ body {
 
 /* Resting on the container's bottom edge (the dashboard card). */
 .mascot-perch {
-  bottom: calc(var(--mascot-w) * -0.16667);
+  bottom: calc(var(--mascot-w) * -0.18667);
 }
 
 /* Resting on the container's top edge (the chat composer). */
 .mascot-perch-top {
-  top: calc(var(--mascot-w) * -0.83333);
+  top: calc(var(--mascot-w) * -0.81333);
 }
 
 /* The two places he appears. Media queries have to live here rather than in an
    inline style, which is the whole reason the size is a variable. */
 .mascot-perch-card {
-  --mascot-w: 176px;
+  --mascot-w: 148px;
 }
 /* Only ever shown at sm and up, so it needs no second step. */
 .mascot-perch-chat {
@@ -725,7 +750,7 @@ body {
 
 @media (min-width: 640px) {
   .mascot-perch-card {
-    --mascot-w: 276px;
+    --mascot-w: 208px;
   }
 }
 

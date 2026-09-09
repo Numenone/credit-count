@@ -171,8 +171,12 @@ export function MascotChat({
         </div>
 
         {/* The composer is Rusty's ledge in here: he leans on its top edge, the
-            same pose as on the dashboard card with the border moved. */}
-        <div className="relative border-t border-[var(--line)] px-5 pb-5 pt-4">
+            same pose as on the dashboard card with the border moved.
+
+            The top padding is not decoration — his paws hang 0.18667 × his
+            width below that edge, so the input has to start below them or he
+            sits on top of the controls. 200px × 0.18667 ≈ 38, plus a gap. */}
+        <div className="relative border-t border-[var(--line)] px-5 pb-5 pt-4 sm:pt-[3.75rem]">
           <div className="mascot-perch-top mascot-perch-chat pointer-events-none absolute right-2 hidden sm:block">
             <Mascot emotion={pending ? "thinking" : emotion} />
           </div>

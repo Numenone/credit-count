@@ -96,7 +96,7 @@ export function MascotCard() {
   // He overhangs the card, so the section reserves clearance underneath for the
   // paws before the next one begins. The widths here are the same numbers the
   // .mascot-perch arithmetic consumes.
-  const clearance = Math.round(ledgeOffset(276)) - 18;
+  const clearance = Math.round(ledgeOffset(208)) - 12;
 
   return (
     <>
@@ -108,7 +108,7 @@ export function MascotCard() {
           </p>
         </div>
 
-        <div className="card mascot-ledge relative isolate p-5 pb-[9.5rem] sm:pb-6 sm:pr-[18rem]">
+        <div className="card mascot-ledge relative isolate p-5 pb-[7.5rem] sm:pb-6 sm:pr-[14rem]">
           <span className="chip chip-brand !py-1">
             <SparkIcon size={11} />
             AI mascot
