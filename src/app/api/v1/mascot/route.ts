@@ -45,13 +45,20 @@ const MAX_HISTORY_TURN_CHARS = 1500;
 /** Whole-transcript budget, independent of the per-turn caps. */
 const MAX_HISTORY_CHARS = 6000;
 
+// These bounds only stop a body large enough to be a denial of service. The
+// meaningful limits are applied after sanitising, against the text that would
+// actually be sent — stripping invisible padding first means a legitimate
+// message is not refused for characters that were never going to reach the
+// model anyway.
+const ABSURD = 20_000;
+
 const turnSchema = z.object({
   role: z.enum(["user", "assistant"]),
-  text: z.string().min(1).max(MAX_HISTORY_TURN_CHARS * 2),
+  text: z.string().min(1).max(ABSURD),
 });
 
 const requestSchema = z.object({
-  message: z.string().min(1, "Say something first").max(MAX_MESSAGE_CHARS * 2),
+  message: z.string().min(1, "Say something first").max(ABSURD),
   history: z.array(turnSchema).max(HISTORY_LIMIT).optional(),
 });
 
@@ -113,13 +120,24 @@ export async function POST(request: Request) {
     return apiError("Unprocessable entity", 422, parsed.error.issues[0].message);
   }
 
-  // Sanitising happens after the shape check and before anything is measured,
-  // so the budgets below are counted on the text that will actually be sent.
-  const message = sanitise(parsed.data.message, MAX_MESSAGE_CHARS);
+  // Sanitising happens before anything is measured, so the budgets below are
+  // counted on the text that will actually be sent.
+  const message = sanitise(parsed.data.message);
   if (!message) {
     return apiError("Unprocessable entity", 422, "Say something first.");
   }
+  // Refused rather than truncated: answering half a question, and charging a
+  // turn for it, is worse than saying the message is too long.
+  if (message.length > MAX_MESSAGE_CHARS) {
+    return apiError(
+      "Unprocessable entity",
+      422,
+      `Keep it under ${MAX_MESSAGE_CHARS} characters — that one is ${message.length}.`,
+    );
+  }
 
+  // History is replay of turns that were already bounded when they were made,
+  // so here truncation is the proportionate answer.
   const history = (parsed.data.history ?? [])
     .map((turn) => ({ role: turn.role, text: sanitise(turn.text, MAX_HISTORY_TURN_CHARS) }))
     .filter((turn) => turn.text.length > 0);

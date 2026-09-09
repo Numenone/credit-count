@@ -128,8 +128,14 @@ const FENCE = /<\/?\s*visitor[^>]*>/gi;
  * would otherwise use to write "ignore your instructions" in characters that
  * do not match anything a filter looks for — and, more importantly, makes what
  * the model sees the same as what the user sees.
+ *
+ * `max` truncates, and callers should think about whether truncation is the
+ * right answer. For the model's reply it is: there is nothing else to do with
+ * output that came back too long. For a caller's message it is not — silently
+ * answering half a question, and charging a turn for it, is worse than saying
+ * the message is too long. So the route measures after sanitising and refuses.
  */
-export function sanitise(input: string, max: number) {
+export function sanitise(input: string, max = Number.POSITIVE_INFINITY) {
   return input
     .normalize("NFKC")
     .replace(CONTROL, " ")
