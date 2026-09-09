@@ -96,7 +96,12 @@ export function MascotChat({
           </button>
         </header>
 
-        <div ref={scroller} className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+        {/* The bottom padding is Rusty's headroom: he leans up out of the
+            composer into this area, so the newest message has to clear him. */}
+        <div
+          ref={scroller}
+          className="flex-1 space-y-4 overflow-y-auto px-5 pb-5 pt-5 sm:pb-[10.5rem]"
+        >
           {turns.length === 0 && (
             <div className="space-y-3">
               <p className="text-sm leading-relaxed text-[var(--ink-2)]">
@@ -165,10 +170,11 @@ export function MascotChat({
           )}
         </div>
 
-        {/* The composer is Rusty's ledge in here: he leans on its top edge. */}
+        {/* The composer is Rusty's ledge in here: he leans on its top edge, the
+            same pose as on the dashboard card with the border moved. */}
         <div className="relative border-t border-[var(--line)] px-5 pb-5 pt-4">
-          <div className="pointer-events-none absolute -top-[92px] right-3 hidden sm:block">
-            <Mascot emotion={pending ? "thinking" : emotion} width={150} />
+          <div className="mascot-perch-top mascot-perch-chat pointer-events-none absolute right-2 hidden sm:block">
+            <Mascot emotion={pending ? "thinking" : emotion} />
           </div>
 
           <form

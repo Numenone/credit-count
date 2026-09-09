@@ -69,17 +69,33 @@
   --scene-moon-alpha: 0;
 
 
-  /* Rusty, the mascot. Fur reads warm against both surfaces; the cap borrows
-     the brand colour so the character belongs to this app rather than to a
-     sticker pack. */
-  --mascot-fur: #d8a86a;
-  --mascot-fur-dark: #b8873f;
-  --mascot-muzzle: #f3ddb8;
-  --mascot-ink: #2b2118;
-  --mascot-tongue: #e08a90;
-  --mascot-cap-band: #8f2a12;
-  --mascot-cap-stripe: #ffffff;
-  --mascot-steam: #eceff4;
+  /* Rusty, the mascot.
+     A cartoon character keeps his own colours in both themes — a dog that
+     changes coat when you flip the theme stops being a character and starts
+     being a UI element. So these are defined once and deliberately NOT
+     re-declared under dark mode; only the two props that have to read against
+     the surface behind them (steam, shadow) are theme-scoped further down.
+     The cap borrows the brand colour so he belongs to this app. */
+  --mascot-fur: #dda56a;
+  --mascot-fur-mid: #c88b4c;
+  --mascot-fur-dark: #a96f36;
+  --mascot-muzzle: #f7e3c4;
+  --mascot-line: #4a2c17;
+  --mascot-nose: #33200f;
+  --mascot-iris: #7a4a1f;
+  --mascot-pupil: #241505;
+  --mascot-tongue: #e2757f;
+  --mascot-blush: #e08774;
+  --mascot-cap: #e8622a;
+  --mascot-cap-dark: #b8410f;
+  --mascot-cap-stripe: #fbf1e2;
+  --mascot-denim: #47638f;
+  --mascot-denim-dark: #33486c;
+  --mascot-shirt: #f6ece0;
+  --mascot-brass: #e8b04a;
+  --mascot-scarf: #c8392c;
+  --mascot-scarf-dark: #96271d;
+  --mascot-steam: #e7ebf2;
   --mascot-sweat: #7fb6e8;
 
   --radius: 0.875rem;
@@ -144,15 +160,9 @@
     --scene-sun-alpha: 0;
     --scene-moon-alpha: 1;
 
-    --mascot-fur: #c2925a;
-    --mascot-fur-dark: #9e7136;
-    --mascot-muzzle: #e3caa2;
-    --mascot-ink: #221a13;
-    --mascot-tongue: #cf757c;
-    --mascot-cap-band: #7d2410;
-    --mascot-cap-stripe: #f4efe6;
-    --mascot-steam: #2c313c;
-    --mascot-sweat: #5f9ed4;
+    /* Rusty keeps his coat in dark mode — only the puff of steam has to change,
+       because it is drawn against the card rather than against him. */
+    --mascot-steam: #3a4152;
   }
 }
 
@@ -210,15 +220,7 @@
   --scene-sun-alpha: 0;
   --scene-moon-alpha: 1;
 
-  --mascot-fur: #c2925a;
-  --mascot-fur-dark: #9e7136;
-  --mascot-muzzle: #e3caa2;
-  --mascot-ink: #221a13;
-  --mascot-tongue: #cf757c;
-  --mascot-cap-band: #7d2410;
-  --mascot-cap-stripe: #f4efe6;
-  --mascot-steam: #2c313c;
-  --mascot-sweat: #5f9ed4;
+  --mascot-steam: #3a4152;
 }
 
 @theme inline {
@@ -628,9 +630,38 @@ body {
 
 /* ---------------------------------------------------------------- mascot -- */
 
-@keyframes wag {
-  0%, 100% { transform: rotate(-16deg); }
-  50%      { transform: rotate(16deg); }
+/* Blinking is what stops a drawn face reading as a mask, and an evenly spaced
+   blink reads as a metronome rather than a creature. So the timeline is uneven:
+   a single blink early, a double blink late, and a long still stretch between.
+   The lid scales from its own top edge — transform-origin is given in user
+   units at the call site, because in SVG `center` resolves against the viewBox
+   rather than the element. */
+@keyframes rusty-blink {
+  0%, 25%, 100%   { transform: scaleY(0); }
+  26.5%, 27.5%    { transform: scaleY(1); }
+  29%, 78%        { transform: scaleY(0); }
+  79%, 79.8%      { transform: scaleY(1); }
+  81%, 84%        { transform: scaleY(0); }
+  85%, 85.8%      { transform: scaleY(1); }
+  87%             { transform: scaleY(0); }
+}
+
+/* He is alive even when idle: a slow breath, and a faster bob when delighted. */
+@keyframes rusty-breathe {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  50%      { transform: translateY(2.4px) scaleX(1.006); }
+}
+
+@keyframes rusty-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25%      { transform: translateY(-4px) rotate(-1.2deg); }
+  75%      { transform: translateY(-1px) rotate(1.2deg); }
+}
+
+/* Ears are soft, so they lag behind the head rather than moving with it. */
+@keyframes rusty-ear {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(var(--ear-swing, 4deg)); }
 }
 
 @keyframes puff {
@@ -645,8 +676,8 @@ body {
 }
 
 @keyframes sway {
-  0%, 100% { transform: translate(190px, 66px) rotate(9deg); }
-  50%      { transform: translate(190px, 62px) rotate(3deg); }
+  0%, 100% { transform: rotate(6deg) translateY(0); }
+  50%      { transform: rotate(-4deg) translateY(-3px); }
 }
 
 @keyframes bead {
@@ -658,6 +689,44 @@ body {
    the card must not clip them. */
 .mascot-ledge {
   overflow: visible;
+}
+
+/* Perching him is arithmetic, not eyeballing. His artwork puts the parapet line
+   at y=250 of a 300-unit box, so the drawing continues 50/300 of its width past
+   that line. Set --mascot-w and the offsets follow — which is what lets him
+   change size at a breakpoint without the pose drifting off the edge.
+
+   A percentage `bottom` would resolve against the container's HEIGHT, so these
+   have to be calc() against the width variable. */
+.mascot-perch,
+.mascot-perch-top {
+  width: var(--mascot-w);
+}
+
+/* Resting on the container's bottom edge (the dashboard card). */
+.mascot-perch {
+  bottom: calc(var(--mascot-w) * -0.16667);
+}
+
+/* Resting on the container's top edge (the chat composer). */
+.mascot-perch-top {
+  top: calc(var(--mascot-w) * -0.83333);
+}
+
+/* The two places he appears. Media queries have to live here rather than in an
+   inline style, which is the whole reason the size is a variable. */
+.mascot-perch-card {
+  --mascot-w: 176px;
+}
+/* Only ever shown at sm and up, so it needs no second step. */
+.mascot-perch-chat {
+  --mascot-w: 200px;
+}
+
+@media (min-width: 640px) {
+  .mascot-perch-card {
+    --mascot-w: 276px;
+  }
 }
 
 @keyframes mascot-arrive {

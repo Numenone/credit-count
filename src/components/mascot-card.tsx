@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Mascot } from "@/components/mascot";
+import { Mascot, ledgeOffset } from "@/components/mascot";
 import { MascotChat, type Turn } from "@/components/mascot-chat";
 import type { Emotion } from "@/lib/mascot-shared";
 import { HISTORY_LIMIT } from "@/lib/mascot-shared";
@@ -93,9 +93,14 @@ export function MascotCard() {
     void send(trimmed);
   };
 
+  // He overhangs the card, so the section reserves clearance underneath for the
+  // paws before the next one begins. The widths here are the same numbers the
+  // .mascot-perch arithmetic consumes.
+  const clearance = Math.round(ledgeOffset(276)) - 18;
+
   return (
     <>
-      <section className="rise">
+      <section className="rise" style={{ paddingBottom: clearance }}>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold tracking-tight">Ask Rusty</h2>
           <p className="text-xs text-[var(--ink-3)]">
@@ -103,7 +108,7 @@ export function MascotCard() {
           </p>
         </div>
 
-        <div className="card mascot-ledge relative isolate p-5 pb-[7.5rem] sm:pb-6 sm:pr-[13rem]">
+        <div className="card mascot-ledge relative isolate p-5 pb-[9.5rem] sm:pb-6 sm:pr-[18rem]">
           <span className="chip chip-brand !py-1">
             <SparkIcon size={11} />
             AI mascot
@@ -146,9 +151,11 @@ export function MascotCard() {
             </button>
           )}
 
-          {/* He rests on the card's bottom edge — the paws deliberately cross it. */}
-          <div className="mascot-arrive pointer-events-none absolute -bottom-5 right-4 -z-10 sm:-bottom-6 sm:right-6">
-            <Mascot emotion={pending ? "thinking" : emotion} width={168} />
+          {/* He rests on the card's bottom edge — the paws deliberately cross
+              it. .mascot-perch is what lands his forearms exactly on the border
+              rather than near it, at either size. */}
+          <div className="mascot-perch mascot-perch-card mascot-arrive pointer-events-none absolute right-1 -z-10 sm:right-4">
+            <Mascot emotion={pending ? "thinking" : emotion} />
           </div>
         </div>
       </section>
