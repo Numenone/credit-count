@@ -80,5 +80,17 @@ for (const needle of [
   check(needle, haystack.includes(flat(needle)));
 }
 
+// The brief asks for one to three pages, and the document has drifted past that
+// twice. Counted from the PDF itself, because estimating it from the word count
+// is what let it drift: a fourth page appeared once for a single trailing line
+// that the third page had room for, and once for no text at all.
+console.log("\nLength");
+const pdf = readFileSync("docs/TDD.pdf", "latin1");
+const pages = (pdf.match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+check(
+  `${pages} page${pages === 1 ? "" : "s"}, and the brief asks for one to three`,
+  pages >= 1 && pages <= 3,
+);
+
 console.log(`\n${failures === 0 ? "The HTML matches the source." : `${failures} problem(s).`}`);
 process.exit(failures === 0 ? 0 : 1);

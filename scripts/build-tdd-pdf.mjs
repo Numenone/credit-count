@@ -213,6 +213,9 @@ h2 {
    for it. One line alone at the top of a page is worth avoiding; one line
    alone on a page of its own is not. */
 p { margin: 0 0 5.5pt; orphans: 1; widows: 1; }
+/* The last paragraph's bottom margin counts towards the page box, so when
+   the text ends near the boundary it pushes an entirely blank page out. */
+body > :last-child { margin-bottom: 0; }
 strong { font-weight: 650; }
 
 /* The rules in the source separate sections whose headings are already ruled,
