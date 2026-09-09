@@ -90,7 +90,9 @@
   --mascot-cap: #e8622a;
   --mascot-denim: #47638f;
   --mascot-denim-dark: #33486c;
-  --mascot-shirt: #f6ece0;
+  /* Warm oatmeal rather than off-white: against a white card an off-white
+     shirt leaves the outline doing all the work of holding his silhouette. */
+  --mascot-shirt: #e3d5bd;
   --mascot-brass: #e8b04a;
   --mascot-scarf: #c8392c;
   --mascot-scarf-dark: #96271d;

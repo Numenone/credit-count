@@ -406,44 +406,75 @@ export function Mascot({
             silhouette is a clean bust and the overalls finally have room to be
             the costume rather than a sliver of blue behind a limb. */}
         <g clipPath={`url(#${id("above-ledge")})`}>
+          {/* A shirt, not bare fur. Denim laid straight onto a dog reads as a
+              bib stuck to an animal; a garment underneath is what makes the
+              dungarees look worn rather than applied. */}
           <path
             d="M 48 300 C 50 208 100 186 150 186 C 200 186 250 208 252 300 Z"
-            fill="var(--mascot-fur)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
+            fill="var(--mascot-shirt)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
           />
 
-          {/* The dungarees. Straps first so the bib's top edge covers where they
-              buckle, the way real ones do. */}
+          {/* Straps. Straight bands, because from the front that is what a
+              shoulder strap is — the curved round-capped strokes they replace
+              read as two blue blobs sitting on his shoulders. Each is stroked
+              twice, wide in the line colour then narrower in denim, which is how
+              a stroked band gets a contour. */}
+          {([-1, 1] as const).map((side) => (
+            <g key={side}>
+              <path
+                d={`M ${150 + side * 32} 222 L ${150 + side * 42} 193`}
+                stroke={LINE} strokeWidth={21} strokeLinecap="butt" fill="none"
+              />
+              <path
+                d={`M ${150 + side * 32} 222 L ${150 + side * 42} 193`}
+                stroke="var(--mascot-denim)" strokeWidth={15} strokeLinecap="butt" fill="none"
+              />
+            </g>
+          ))}
+
+          {/* The bib narrows at the chest and flares to the waist, which is the
+              silhouette that says "dungarees" rather than "blue rectangle". */}
+          <path
+            d="M 112 223 Q 112 216 119 216 L 181 216 Q 188 216 188 223 L 188 264 C 192 279 202 292 210 300 L 90 300 C 98 292 108 279 112 264 Z"
+            fill="var(--mascot-denim)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
+          />
+
+          {/* Gold top-stitching, inset from the edges the way real denim is. */}
+          <path
+            d="M 118 224 L 182 224"
+            stroke="var(--mascot-brass)" strokeWidth={2.2} strokeLinecap="round" opacity={0.7}
+          />
           {([-1, 1] as const).map((side) => (
             <path
               key={side}
-              d={`M ${150 + side * 44} 220 C ${150 + side * 58} 206 ${150 + side * 70} 208 ${150 + side * 77} 226`}
-              stroke="var(--mascot-denim)" strokeWidth={17} strokeLinecap="round" fill="none"
+              d={`M ${150 + side * 32} 230 L ${150 + side * 32} 262`}
+              stroke="var(--mascot-brass)" strokeWidth={2.2} strokeLinecap="round" opacity={0.55}
             />
           ))}
+
+          {/* Patch pocket. */}
           <path
-            d="M 98 244 C 98 220 122 210 150 210 C 178 210 202 220 202 244 L 202 300 L 98 300 Z"
-            fill="var(--mascot-denim)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
-          />
-          {/* Brass buckles where the straps meet the bib. */}
-          {([-1, 1] as const).map((side) => (
-            <g key={side}>
-              <rect
-                x={150 + side * 46 - 8} y={214} width={16} height={13} rx={3}
-                fill="var(--mascot-brass)" stroke={LINE} strokeWidth={3}
-              />
-              <circle cx={150 + side * 46} cy={220.5} r={2.6} fill={LINE} opacity={0.65} />
-            </g>
-          ))}
-          {/* A patch pocket and a seam, so the denim is a garment and not a
-              blue shape. */}
-          <path
-            d="M 130 250 L 170 250 L 170 274 L 150 284 L 130 274 Z"
+            d="M 130 242 L 170 242 L 170 268 L 150 278 L 130 268 Z"
             fill="var(--mascot-denim-dark)" stroke={LINE} strokeWidth={3} strokeLinejoin="round"
           />
           <path
-            d="M 132 256 L 168 256"
-            stroke="var(--mascot-brass)" strokeWidth={2.4} strokeLinecap="round" opacity={0.75}
+            d="M 133 248 L 167 248"
+            stroke="var(--mascot-brass)" strokeWidth={2.2} strokeLinecap="round" opacity={0.7}
           />
+
+          {/* Brass buckles, where each strap meets the bib. */}
+          {([-1, 1] as const).map((side) => (
+            <g key={side}>
+              <rect
+                x={150 + side * 32 - 9} y={214} width={18} height={14} rx={3}
+                fill="var(--mascot-brass)" stroke={LINE} strokeWidth={3}
+              />
+              <path
+                d={`M ${150 + side * 32 - 4} 221 L ${150 + side * 32 + 4} 221`}
+                stroke={LINE} strokeWidth={2.6} strokeLinecap="round" opacity={0.7}
+              />
+            </g>
+          ))}
 
           {/* Neckerchief, over the collarbone. */}
           <path
