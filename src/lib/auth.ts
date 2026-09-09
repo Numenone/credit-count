@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { verifiedClaims } from "@/lib/supabase/claims";
 import type { Profile } from "@/lib/database.types";
 
 /**
@@ -11,31 +12,32 @@ import type { Profile } from "@/lib/database.types";
  *
  * ## Why this is memoised
  *
- * `getUser()` is a network call — it revalidates the JWT against Supabase Auth
- * rather than trusting the cookie — and the profile lookup is a second one. A
- * page and its layout both call requireUser(), so a single navigation was
- * making four round trips to fetch the same two rows, one after another,
- * before any of the page's own queries could start.
+ * The site header and the page both call requireUser(), so a single navigation
+ * was fetching the same two rows twice, one after another, before any of the
+ * page's own queries could start.
  *
  * React's `cache()` memoises for the lifetime of one request, which is exactly
  * the right scope: two components in the same render share the answer, and two
- * different visitors never can. Nothing is cached across requests, so a signed
- * out session is noticed on the next navigation as before.
+ * different visitors never can. Nothing survives across requests.
+ *
+ * The session itself is now verified locally rather than by asking Supabase
+ * Auth — see supabase/claims.ts for why that is both much faster and not a
+ * weakening.
  */
 export const getSessionUser = cache(async () => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const claims = await verifiedClaims(supabase);
+  if (!claims) return null;
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", claims.sub)
     .single<Profile>();
 
-  return profile ? { user, profile } : null;
+  // A deleted user can still hold an unexpired token. No profile row, no
+  // session — which is where the app fails closed without asking Auth.
+  return profile ? { user: { id: claims.sub, email: claims.email }, profile } : null;
 });
 
 export async function requireUser() {

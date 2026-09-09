@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { verifiedClaims } from "@/lib/supabase/claims";
 
 /** Routes a signed-out visitor may reach. Everything else redirects to /login. */
 const PUBLIC_PATHS = ["/", "/leaderboard", "/login", "/signup", "/auth"];
@@ -46,11 +47,10 @@ export async function updateSession(request: NextRequest, nonce?: string) {
     },
   );
 
-  // getUser() revalidates the JWT against Supabase Auth; getSession() would trust
-  // whatever is in the cookie, so it is deliberately not used here.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // The signature is verified locally against the project's ES256 public keys,
+  // not by asking Supabase Auth. getSession() alone would trust the cookie
+  // unchecked, which is a different thing entirely and is still not used here.
+  const user = await verifiedClaims(supabase);
 
   const { pathname } = request.nextUrl;
 
@@ -77,7 +77,7 @@ export async function updateSession(request: NextRequest, nonce?: string) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", user.id)
+      .eq("id", user.sub)
       .maybeSingle<{ role: string }>();
 
     if (profile?.role !== "admin") {

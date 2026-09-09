@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { verifiedClaims } from "@/lib/supabase/claims";
 import type { Profile } from "@/lib/database.types";
 
 /**
@@ -42,10 +43,11 @@ export function fromPostgrest(error: PostgrestError) {
 
 export async function getAuthedClient() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
+  // Verified against the project's public keys rather than by a round trip to
+  // Supabase Auth. See supabase/claims.ts — this was the single largest cost in
+  // every authenticated request.
+  const claims = await verifiedClaims(supabase);
+  return { supabase, user: claims ? { id: claims.sub, email: claims.email } : null };
 }
 
 export async function requireProfile() {
