@@ -13,6 +13,7 @@ import { TypeSplit } from "@/components/type-split";
 import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { Milestones } from "@/components/milestones";
 import { LogRideForm } from "@/components/log-ride-form";
+import { MascotCard } from "@/components/mascot-card";
 import { EmptyState } from "@/components/empty-state";
 import { Reveal } from "@/components/reveal";
 import {
@@ -232,6 +233,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             )}
           </div>
         </section>
+
+        {/* ---------------------------------------------------------- Rusty -- */}
+        <MascotCard />
 
         {isNewUser ? (
           <section className="card rise p-2">

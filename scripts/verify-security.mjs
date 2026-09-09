@@ -225,6 +225,59 @@ if (process.env.E2E_ADMIN_EMAIL && process.env.E2E_ADMIN_PASSWORD) {
   console.log("\nAdmin — skipped (set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD to include)");
 }
 
+// ------------------------------------------------------- mascot rate limit --
+// The mascot is the only endpoint that spends money, so its limit has to hold
+// against a caller talking straight to PostgREST rather than to the app.
+console.log("\nMascot rate limit");
+{
+  const anon = anonClient();
+
+  const anonClaim = await anon.rpc("claim_mascot_turn", { max_turns: 12, window_minutes: 5 });
+  check(
+    "visitors cannot claim a mascot turn",
+    anonClaim.error != null || anonClaim.data === false,
+    anonClaim.error?.message ?? `returned ${anonClaim.data}`,
+  );
+
+  const readUsage = await a.client.from("mascot_usage").select("*");
+  check(
+    "users cannot read the rate-limit table",
+    (readUsage.data ?? []).length === 0,
+    readUsage.error?.message ?? `${(readUsage.data ?? []).length} rows`,
+  );
+
+  const clearUsage = await a.client.from("mascot_usage").delete({ count: "exact" }).gte("turns", 0);
+  check(
+    "users cannot delete their own rate-limit rows",
+    clearUsage.error != null || (clearUsage.count ?? 0) === 0,
+    clearUsage.error?.message ?? `${clearUsage.count} rows deleted`,
+  );
+
+  const forgeUsage = await a.client
+    .from("mascot_usage")
+    .insert({ user_id: a.userId, window_start: new Date().toISOString(), turns: -9999 });
+  check("users cannot forge a rate-limit row", forgeUsage.error != null, forgeUsage.error?.message);
+
+  // Burn a window down with a tiny allowance. This costs nothing — the counter
+  // lives in Postgres and no model call happens here. It does spend some of the
+  // enthusiast's real allowance for the current five-minute window, so that
+  // account may see a 429 from the mascot for a few minutes after a run.
+  let refusedAt = null;
+  for (let i = 1; i <= 6 && refusedAt === null; i++) {
+    const { data } = await a.client.rpc("claim_mascot_turn", { max_turns: 3, window_minutes: 5 });
+    if (data === false) refusedAt = i;
+  }
+  check(
+    "the limit refuses further turns once spent",
+    refusedAt !== null,
+    refusedAt ? `refused on call ${refusedAt}` : "never refused in 6 calls",
+  );
+
+  // And it stays refused: a caller cannot reset the window by asking again.
+  const afterwards = await a.client.rpc("claim_mascot_turn", { max_turns: 3, window_minutes: 5 });
+  check("a spent window cannot be reset by the caller", afterwards.data === false);
+}
+
 async function anyCoasterId(client) {
   const { data } = await client.from("coasters").select("id").limit(1).single();
   return data?.id ?? null;

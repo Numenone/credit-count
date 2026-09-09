@@ -68,6 +68,20 @@
   --scene-sun-alpha: 1;
   --scene-moon-alpha: 0;
 
+
+  /* Rusty, the mascot. Fur reads warm against both surfaces; the cap borrows
+     the brand colour so the character belongs to this app rather than to a
+     sticker pack. */
+  --mascot-fur: #d8a86a;
+  --mascot-fur-dark: #b8873f;
+  --mascot-muzzle: #f3ddb8;
+  --mascot-ink: #2b2118;
+  --mascot-tongue: #e08a90;
+  --mascot-cap-band: #8f2a12;
+  --mascot-cap-stripe: #ffffff;
+  --mascot-steam: #eceff4;
+  --mascot-sweat: #7fb6e8;
+
   --radius: 0.875rem;
   --radius-sm: 0.625rem;
 
@@ -129,6 +143,16 @@
     --scene-star-alpha: 1;
     --scene-sun-alpha: 0;
     --scene-moon-alpha: 1;
+
+    --mascot-fur: #c2925a;
+    --mascot-fur-dark: #9e7136;
+    --mascot-muzzle: #e3caa2;
+    --mascot-ink: #221a13;
+    --mascot-tongue: #cf757c;
+    --mascot-cap-band: #7d2410;
+    --mascot-cap-stripe: #f4efe6;
+    --mascot-steam: #2c313c;
+    --mascot-sweat: #5f9ed4;
   }
 }
 
@@ -185,6 +209,16 @@
   --scene-star-alpha: 1;
   --scene-sun-alpha: 0;
   --scene-moon-alpha: 1;
+
+  --mascot-fur: #c2925a;
+  --mascot-fur-dark: #9e7136;
+  --mascot-muzzle: #e3caa2;
+  --mascot-ink: #221a13;
+  --mascot-tongue: #cf757c;
+  --mascot-cap-band: #7d2410;
+  --mascot-cap-stripe: #f4efe6;
+  --mascot-steam: #2c313c;
+  --mascot-sweat: #5f9ed4;
 }
 
 @theme inline {
@@ -590,4 +624,47 @@ body {
   opacity: 1;
   transform: none;
   transition: opacity 620ms var(--ease-out), transform 620ms var(--ease-out);
+}
+
+/* ---------------------------------------------------------------- mascot -- */
+
+@keyframes wag {
+  0%, 100% { transform: rotate(-16deg); }
+  50%      { transform: rotate(16deg); }
+}
+
+@keyframes puff {
+  0%   { opacity: 0; transform: translate(0, 6px) scale(0.6); }
+  35%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(10px, -22px) scale(1.25); }
+}
+
+@keyframes twinkle-spark {
+  0%, 100% { opacity: 0.25; transform: scale(0.75); }
+  50%      { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes sway {
+  0%, 100% { transform: translate(190px, 66px) rotate(9deg); }
+  50%      { transform: translate(190px, 62px) rotate(3deg); }
+}
+
+@keyframes bead {
+  0%, 100% { opacity: 0.35; transform: translateY(0); }
+  50%      { opacity: 1; transform: translateY(4px); }
+}
+
+/* The ledge the character rests on: his paws deliberately cross this edge, so
+   the card must not clip them. */
+.mascot-ledge {
+  overflow: visible;
+}
+
+@keyframes mascot-arrive {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.mascot-arrive {
+  animation: mascot-arrive 640ms var(--ease-out) both;
 }
