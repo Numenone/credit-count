@@ -364,20 +364,13 @@ console.log("\nMascot");
     String(stackedReplies.status),
   );
 
-  // A conversation id that is not the caller's own. It must not open someone
-  // else's transcript, and it must not error either — an id you cannot see is
-  // indistinguishable from one that does not exist, so it starts a new
-  // conversation. Checked with a well-formed uuid that belongs to nobody.
-  const strangerConversation = await request("/api/v1/mascot", {
-    cookie: enthusiast,
-    method: "POST",
-    body: { message: "hello", conversationId: "00000000-0000-4000-8000-000000000000" },
-  });
-  check(
-    "an unknown conversation id is not an error and not an opening",
-    [200, 429, 503].includes(strangerConversation.status),
-    String(strangerConversation.status),
-  );
+  // A conversation id belonging to nobody must not open anyone's transcript,
+  // and must not error either — an id you cannot see is indistinguishable from
+  // one that does not exist. That is asserted in verify-security.mjs, against
+  // the function that decides it, because proving it here would mean letting
+  // the request through to a real model call. This suite spends no money, and
+  // a check that costs a few cents every time it runs is a check someone will
+  // eventually stop running.
 
   const malformedConversation = await request("/api/v1/mascot", {
     cookie: enthusiast,
