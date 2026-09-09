@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# The checks split into three jobs on purpose. `quality` and `secrets` need
+# nothing from the outside world, so they run on every fork and every pull
+# request. `live` needs real credentials and a deployment, so it is skipped
+# rather than failed when those are absent — a red X for "no secrets
+# configured" trains people to ignore red Xs.
+jobs:
+  quality:
+    name: Types, lint, tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint src scripts
+
+      - name: Unit tests
+        run: npm test
+
+      # The build needs the public Supabase values to resolve at module scope.
+      # Both are publishable by design — the anon key is protected by row-level
+      # security, not by being secret — so placeholders are enough to compile.
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+        run: npm run build
+
+      # Runs against the build output, so it has to follow it. Asserts the
+      # mascot's system prompt is absent from everything shipped to a browser.
+      - name: No prompt or key material in the client bundle
+        run: node scripts/scan-prompt-leak.mjs
+
+  secrets:
+    name: Credential scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The scan reads tracked files at this commit. Full history would be
+          # a different check — worth having, but this one is about not
+          # shipping a credential today, and it must not pass by omission.
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Scan tracked files for credentials
+        run: node scripts/scan-secrets.mjs
+
+  live:
+    name: Authorisation checks against the deployment
+    runs-on: ubuntu-latest
+    # Forks never see repository secrets, so this would fail for reasons the
+    # contributor cannot fix.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check whether credentials are configured
+        id: creds
+        env:
+          URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          ENTHUSIAST: ${{ secrets.E2E_ENTHUSIAST_EMAIL }}
+        run: |
+          if [ -n "$URL" ] && [ -n "$KEY" ] && [ -n "$ENTHUSIAST" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipped — set the E2E_* and NEXT_PUBLIC_SUPABASE_* repository secrets to run these."
+          fi
+
+      # Proves the database refuses the wrong caller: policies, column grants
+      # and the mascot's rate limit, exercised with real sessions.
+      - name: Database authorisation
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          E2E_ENTHUSIAST_EMAIL: ${{ secrets.E2E_ENTHUSIAST_EMAIL }}
+          E2E_ENTHUSIAST_PASSWORD: ${{ secrets.E2E_ENTHUSIAST_PASSWORD }}
+          E2E_SECOND_USER_EMAIL: ${{ secrets.E2E_SECOND_USER_EMAIL }}
+          E2E_SECOND_USER_PASSWORD: ${{ secrets.E2E_SECOND_USER_PASSWORD }}
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+        run: node scripts/verify-security.mjs
+
+      # Proves the layer in front of it does too, including every gate on the
+      # mascot endpoint. The live model probes stay off: they cost money, and
+      # CI should not be able to spend it.
+      - name: HTTP authorisation
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          E2E_ENTHUSIAST_EMAIL: ${{ secrets.E2E_ENTHUSIAST_EMAIL }}
+          E2E_ENTHUSIAST_PASSWORD: ${{ secrets.E2E_ENTHUSIAST_PASSWORD }}
+          E2E_SECOND_USER_EMAIL: ${{ secrets.E2E_SECOND_USER_EMAIL }}
+          E2E_SECOND_USER_PASSWORD: ${{ secrets.E2E_SECOND_USER_PASSWORD }}
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+        run: node scripts/verify-http-security.mjs

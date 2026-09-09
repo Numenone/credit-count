@@ -1,5 +1,6 @@
 import { getAuthedClient, fromPostgrest, apiError, unauthorised } from "@/lib/api";
 import { COASTER_COLUMNS, type RideWithCoaster } from "@/lib/database.types";
+import { csvCell } from "@/lib/csv";
 
 /**
  * GET /api/v1/export?format=json|csv — take your data with you.
@@ -9,21 +10,6 @@ import { COASTER_COLUMNS, type RideWithCoaster } from "@/lib/database.types";
  * promise is "your history is private" should also make it portable — privacy
  * that traps your data is only half the promise.
  */
-function csvCell(value: unknown) {
-  if (value == null) return "";
-  let text = String(value);
-
-  // Formula injection. A ride note beginning =, +, - or @ is executed as a
-  // formula when the file is opened in Excel, Sheets or LibreOffice — which
-  // turns "export your own data" into a way to attack whoever you send it to.
-  // A leading apostrophe makes the cell text, and the tab covers the variant
-  // where a leading whitespace character is stripped before evaluation.
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-
-  // Quote anything that could break the row, and double any embedded quotes.
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
 export async function GET(request: Request) {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorised();

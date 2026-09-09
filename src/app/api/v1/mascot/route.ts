@@ -10,6 +10,7 @@ import {
   SYSTEM_PROMPT,
   fenceMessage,
   isEmotion,
+  isWellFormedHistory,
   sanitise,
 } from "@/lib/mascot";
 
@@ -61,24 +62,6 @@ const requestSchema = z.object({
   message: z.string().min(1, "Say something first").max(ABSURD),
   history: z.array(turnSchema).max(HISTORY_LIMIT).optional(),
 });
-
-/**
- * Rejects a transcript that could not have come from this UI.
- *
- * The client supplies the history, so a caller can hand back anything —
- * including a stack of fabricated assistant turns in which "Rusty" agreed to
- * drop her rules. Requiring a real alternating transcript that starts with the
- * user and ends with the assistant means those turns cannot be stacked: each
- * forged reply has to be paid for with a forged question, inside a bounded
- * budget, and the system prompt is explicit that prior turns are a record
- * rather than a commitment.
- */
-function isWellFormed(history: { role: string; text: string }[]) {
-  if (history.length === 0) return true;
-  if (history.length % 2 !== 0) return false;
-  if (history[0].role !== "user") return false;
-  return history.every((turn, i) => turn.role === (i % 2 === 0 ? "user" : "assistant"));
-}
 
 function sameOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -142,7 +125,7 @@ export async function POST(request: Request) {
     .map((turn) => ({ role: turn.role, text: sanitise(turn.text, MAX_HISTORY_TURN_CHARS) }))
     .filter((turn) => turn.text.length > 0);
 
-  if (!isWellFormed(history)) {
+  if (!isWellFormedHistory(history)) {
     return apiError("Unprocessable entity", 422, "That conversation history is not valid.");
   }
 
