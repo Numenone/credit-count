@@ -55,6 +55,21 @@ export const EMOTIONS = [
 
 export type Emotion = (typeof EMOTIONS)[number];
 
+/**
+ * The subset the model may actually choose from.
+ *
+ * `idle` and `thinking` are states of the interface, not of the character — she
+ * is idle because nobody has asked anything, and thinking because a request is
+ * in flight. The model cannot know either, so it is not offered them.
+ *
+ * Derived once here because it was previously filtered inline in the response
+ * schema and counted by hand in the admin console, which is two places to
+ * update and one of them would have been missed.
+ */
+export const MODEL_EMOTIONS: readonly Emotion[] = EMOTIONS.filter(
+  (emotion) => emotion !== "idle" && emotion !== "thinking",
+);
+
 export function isEmotion(value: unknown): value is Emotion {
   return typeof value === "string" && (EMOTIONS as readonly string[]).includes(value);
 }

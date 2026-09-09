@@ -14,7 +14,9 @@ import {
   modelInfo,
   type Gateway,
 } from "@/lib/mascot-models";
+import { MODEL_EMOTIONS } from "@/lib/mascot-shared";
 import { LlmUsageChart, type UsagePoint } from "@/components/llm-usage-chart";
+import { BudgetMeter, type BudgetState } from "@/components/budget-meter";
 import { LlmConfigForm, type ConfigResult, type ConfigState } from "@/components/llm-config-form";
 import { StatTile } from "@/components/stat-tile";
 import { BarList } from "@/components/bar-list";
@@ -48,6 +50,25 @@ interface SeriesRow {
   p50_latency: number;
 }
 
+/** One row, from `mascot_latency()`. Real percentiles over the calls themselves. */
+interface LatencyRow {
+  p50: number;
+  p95: number;
+  p99: number;
+  slowest: number;
+  calls: number;
+}
+
+/** One row, from `mascot_budget()`. numeric arrives as a string or a number. */
+interface BudgetRow {
+  day_spend: string | number;
+  day_budget: string | number;
+  month_spend: string | number;
+  month_budget: string | number;
+  exhausted: boolean;
+  action: string;
+}
+
 async function saveConfig(_previous: ConfigResult | null, formData: FormData): Promise<ConfigResult> {
   "use server";
 
@@ -60,6 +81,9 @@ async function saveConfig(_previous: ConfigResult | null, formData: FormData): P
   const maxTokens = Number(formData.get("max_tokens"));
   const burstCap = Number(formData.get("burst_cap"));
   const dailyCap = Number(formData.get("daily_cap"));
+  const dailyBudget = Number(formData.get("daily_budget"));
+  const monthlyBudget = Number(formData.get("monthly_budget"));
+  const onExhausted = String(formData.get("on_exhausted") ?? "");
 
   // Checked here as well as by the column constraints. The database is the
   // authority; this exists so a mistake reads as a sentence rather than a
@@ -82,6 +106,18 @@ async function saveConfig(_previous: ConfigResult | null, formData: FormData): P
   if (!Number.isInteger(dailyCap) || dailyCap < 1 || dailyCap > 5000) {
     return { ok: false, message: "Daily limit must be between 1 and 5000." };
   }
+  // Money, so not an integer check. Rounded to the cent the column stores,
+  // otherwise a third of a dollar typed here reads back as something else and
+  // looks like the form lost the value.
+  if (!Number.isFinite(dailyBudget) || dailyBudget < 0 || dailyBudget > 10000) {
+    return { ok: false, message: "Daily budget must be between $0 and $10,000." };
+  }
+  if (!Number.isFinite(monthlyBudget) || monthlyBudget < 0 || monthlyBudget > 100000) {
+    return { ok: false, message: "Monthly budget must be between $0 and $100,000." };
+  }
+  if (!["warn", "stop"].includes(onExhausted)) {
+    return { ok: false, message: "Choose whether to refuse new questions or carry on." };
+  }
 
   const { error } = await supabase.rpc("set_mascot_config", {
     p_gateway: gateway,
@@ -90,6 +126,9 @@ async function saveConfig(_previous: ConfigResult | null, formData: FormData): P
     p_effort: effort,
     p_burst_cap: burstCap,
     p_daily_cap: dailyCap,
+    p_daily_budget: Math.round(dailyBudget * 100) / 100,
+    p_monthly_budget: Math.round(monthlyBudget * 100) / 100,
+    p_on_exhausted: onExhausted,
   });
 
   if (error) return { ok: false, message: error.message };
@@ -106,14 +145,22 @@ export default async function LlmPage({ searchParams }: PageProps<"/admin/llm">)
   const period = isPeriod(params.period) ? params.period : "day";
   const spec = PERIOD_SPEC[period];
 
-  const [configResult, seriesResult, emotionResult] = await Promise.all([
-    supabase
-      .from("mascot_config")
-      .select("gateway, model, max_tokens, effort, burst_cap, daily_cap, updated_at")
-      .maybeSingle<ConfigState>(),
-    supabase.rpc("mascot_usage_series", { p_bucket: spec.bucket, p_hours: spec.windowHours }),
-    supabase.rpc("mascot_emotion_counts", { p_hours: spec.windowHours }),
-  ]);
+  const [configResult, seriesResult, emotionResult, latencyResult, budgetResult] =
+    await Promise.all([
+      supabase
+        .from("mascot_config")
+        .select(
+          "gateway, model, max_tokens, effort, burst_cap, daily_cap, daily_budget_usd, monthly_budget_usd, on_budget_exhausted, updated_at",
+        )
+        .maybeSingle<ConfigState>(),
+      supabase.rpc("mascot_usage_series", { p_bucket: spec.bucket, p_hours: spec.windowHours }),
+      supabase.rpc("mascot_emotion_counts", { p_hours: spec.windowHours }),
+      // Over the same window as the charts, so the tile and the picture agree.
+      supabase.rpc("mascot_latency", { p_hours: spec.windowHours }),
+      // Not windowed: the budgets are today and this month by definition, and
+      // looking at the yearly chart should not change what "today" means.
+      supabase.rpc("mascot_budget"),
+    ]);
 
   const points: UsagePoint[] = ((seriesResult.data ?? []) as SeriesRow[]).map((row) => ({
     bucket: row.bucket,
@@ -140,11 +187,31 @@ export default async function LlmPage({ searchParams }: PageProps<"/admin/llm">)
     { calls: 0, cost: 0, input: 0, output: 0, errors: 0 },
   );
 
-  // Median of the per-bucket medians. Not the true median of every call — the
-  // rows are already aggregated — but the right shape for a health figure, and
-  // cheaper than shipping every latency to compute it exactly.
-  const latencies = points.filter((p) => p.calls > 0).map((p) => p.p50Latency).sort((a, b) => a - b);
-  const medianLatency = latencies.length ? latencies[Math.floor(latencies.length / 2)] : 0;
+  // Percentiles over the calls themselves. This used to be the median of the
+  // per-bucket medians, which is not a percentile of anything: a bucket holding
+  // one slow call weighed the same as a bucket holding a thousand fast ones, so
+  // the figure moved with how the traffic happened to fall across buckets. It
+  // costs one more round trip and is the difference between a number and a
+  // number that means something.
+  const latency = ((latencyResult.data ?? []) as LatencyRow[])[0] ?? {
+    p50: 0,
+    p95: 0,
+    p99: 0,
+    slowest: 0,
+    calls: 0,
+  };
+
+  const budgetRow = ((budgetResult.data ?? []) as BudgetRow[])[0];
+  const budget: BudgetState | null = budgetRow
+    ? {
+        daySpend: Number(budgetRow.day_spend),
+        dayBudget: Number(budgetRow.day_budget),
+        monthSpend: Number(budgetRow.month_spend),
+        monthBudget: Number(budgetRow.month_budget),
+        exhausted: budgetRow.exhausted,
+        action: budgetRow.action,
+      }
+    : null;
 
   const config = configResult.data ?? {
     gateway: "anthropic" as Gateway,
@@ -153,6 +220,9 @@ export default async function LlmPage({ searchParams }: PageProps<"/admin/llm">)
     effort: "low",
     burst_cap: 8,
     daily_cap: 60,
+    daily_budget_usd: 5,
+    monthly_budget_usd: 50,
+    on_budget_exhausted: "stop",
     // Only reached if the single config row is missing, which would be a
     // migration that did not run rather than a normal state.
     updated_at: "1970-01-01T00:00:00.000Z",
@@ -210,10 +280,19 @@ export default async function LlmPage({ searchParams }: PageProps<"/admin/llm">)
             hint={`${(totals.input + totals.output).toLocaleString("en-GB")} tokens in total`}
           />
           <StatTile
-            label="Median latency"
-            value={medianLatency}
+            label="p95 latency"
+            value={latency.p95}
             suffix=" ms"
-            hint="Across buckets that saw traffic"
+            hint={
+              latency.calls === 0
+                ? "No calls reached a model in this window"
+                : // Naming the sample matters more than the figure. A p95 over
+                  // eleven calls is the second-slowest one, and reading it as a
+                  // tail estimate would be reading noise.
+                  `p50 ${latency.p50} ms · p99 ${latency.p99} ms · over ${latency.calls} ${
+                    latency.calls === 1 ? "call" : "calls"
+                  } that reached a model`
+            }
           />
           <StatTile
             label="Failures"
@@ -226,6 +305,12 @@ export default async function LlmPage({ searchParams }: PageProps<"/admin/llm">)
           />
         </div>
       </section>
+
+      {budget && (
+        <Reveal>
+          <BudgetMeter state={budget} />
+        </Reveal>
+      )}
 
       {totals.calls === 0 ? (
         <section className="card rise p-2">
@@ -250,7 +335,7 @@ export default async function LlmPage({ searchParams }: PageProps<"/admin/llm">)
           />
           <BarList
             title="Expressions returned"
-            subtitle={`${emotions.length} of the 22 she can draw`}
+            subtitle={`${emotions.length} of the ${MODEL_EMOTIONS.length} she can choose`}
             items={emotions}
             limit={10}
             unit="replies"
@@ -281,8 +366,22 @@ export default async function LlmPage({ searchParams }: PageProps<"/admin/llm">)
             an error rate you cannot see is one you will not fix.
           </li>
           <li>
-            No prompt or reply text is stored. The ledger answers &ldquo;what did this cost and is
-            it healthy&rdquo;, which does not require keeping what anyone asked.
+            No prompt or reply text is stored <em>here</em>. The ledger answers &ldquo;what did
+            this cost and is it healthy&rdquo;, which does not require keeping what anyone asked.
+            Transcripts live separately, owned by the person who wrote them, and are not readable
+            from this console — being an admin is not a reason to read someone&rsquo;s
+            conversation.
+          </li>
+          <li>
+            The budgets above are enforced by the same ledger. Before a call is made the endpoint
+            sums today&rsquo;s and this month&rsquo;s cost and refuses if either threshold is
+            reached, so the answer to &ldquo;are we overspending&rdquo; does not depend on anyone
+            opening this page.
+          </li>
+          <li>
+            Latency is a real percentile, computed by Postgres over the calls in the window rather
+            than averaged out of the chart buckets. It excludes requests turned away by the rate
+            limit, which never reached a model and would otherwise drag every figure towards zero.
           </li>
         </ul>
       </section>

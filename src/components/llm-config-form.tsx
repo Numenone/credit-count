@@ -10,6 +10,9 @@ export interface ConfigState {
   effort: string;
   burst_cap: number;
   daily_cap: number;
+  daily_budget_usd: number;
+  monthly_budget_usd: number;
+  on_budget_exhausted: string;
   updated_at: string;
 }
 
@@ -157,6 +160,61 @@ export function LlmConfigForm({
           <p className="mt-1.5 text-xs text-[var(--ink-3)]">
             A burst limit is not a budget: without this, eight turns every five minutes all day is
             over two thousand calls from one account.
+          </p>
+        </div>
+
+        {/* The two above bound one person. These bound the deployment, which is
+            the figure that actually appears on an invoice. */}
+        <div>
+          <label htmlFor="daily_budget" className="label">
+            Daily budget (USD, everyone)
+          </label>
+          <input
+            id="daily_budget"
+            name="daily_budget"
+            type="number"
+            min={0}
+            max={10000}
+            step={0.01}
+            defaultValue={current.daily_budget_usd}
+            className="field"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="monthly_budget" className="label">
+            Monthly budget (USD, everyone)
+          </label>
+          <input
+            id="monthly_budget"
+            name="monthly_budget"
+            type="number"
+            min={0}
+            max={100000}
+            step={0.01}
+            defaultValue={current.monthly_budget_usd}
+            className="field"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="on_exhausted" className="label">
+            When a budget is reached
+          </label>
+          <select
+            id="on_exhausted"
+            name="on_exhausted"
+            defaultValue={current.on_budget_exhausted}
+            className="field"
+          >
+            <option value="stop">Refuse new questions</option>
+            <option value="warn">Record it and carry on</option>
+          </select>
+          <p className="mt-1.5 text-xs text-[var(--ink-3)]">
+            Per-user limits cannot cap the total: enough accounts each staying under theirs still
+            adds up to any number you like. This is the only setting here that has a ceiling on
+            what the feature can cost, and it defaults to refusing, because a budget that only
+            warns is a chart with extra steps.
           </p>
         </div>
 

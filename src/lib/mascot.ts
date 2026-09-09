@@ -8,9 +8,9 @@
  * re-exported here for the server's convenience.
  */
 
-import { EMOTIONS, MASCOT_NAME } from "@/lib/mascot-shared";
+import { MASCOT_NAME, MODEL_EMOTIONS } from "@/lib/mascot-shared";
 
-export { EMOTIONS, HISTORY_LIMIT, MASCOT_NAME, isEmotion } from "@/lib/mascot-shared";
+export { EMOTIONS, HISTORY_LIMIT, MASCOT_NAME, MODEL_EMOTIONS, isEmotion } from "@/lib/mascot-shared";
 export type { Emotion } from "@/lib/mascot-shared";
 
 /**
@@ -64,7 +64,7 @@ export const RESPONSE_SCHEMA = {
   properties: {
     emotion: {
       type: "string",
-      enum: EMOTIONS.filter((e) => e !== "idle" && e !== "thinking"),
+      enum: MODEL_EMOTIONS,
       description: "The expression to draw the character with.",
     },
     reply: {
