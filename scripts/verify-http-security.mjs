@@ -534,7 +534,25 @@ console.log("\nForged sessions");
   await refused("an HS256-downgraded token is refused", `${b64(hsHeader)}.${payload}.${signature}`);
 
   // A single flipped character in the signature.
-  const bent = signature.slice(0, -1) + (signature.at(-1) === "A" ? "B" : "A");
+  //
+  // Deliberately NOT the last one. An ES256 signature is 64 bytes, which is 86
+  // base64url characters, and the final character's low bits are discarded by
+  // the decoder — several different characters there decode to identical bytes.
+  // Flipping it produces a token that is not tampered with at all, so this
+  // check passed or failed depending on which character the signature happened
+  // to end with. A test that is right by luck is worse than no test.
+  const at = Math.floor(signature.length / 2);
+  const bent =
+    signature.slice(0, at) + (signature[at] === "A" ? "B" : "A") + signature.slice(at + 1);
+
+  // Proven, not assumed: if the bytes are unchanged the token is genuine and
+  // being accepted would be correct, so the check would be meaningless.
+  const changed = Buffer.compare(
+    Buffer.from(signature, "base64url"),
+    Buffer.from(bent, "base64url"),
+  ) !== 0;
+  check("the tampered signature really differs (guards the check below)", changed);
+
   await refused("a token with a bent signature is refused", `${header}.${payload}.${bent}`);
 
   // Long expired.
