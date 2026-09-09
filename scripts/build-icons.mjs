@@ -38,7 +38,6 @@ const PATH = [
 ];
 
 const STROKE = 2.6; // In the same 24-unit space as the component.
-const VIEW = 24;
 
 function flatten() {
   const points = [];
