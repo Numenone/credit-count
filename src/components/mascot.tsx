@@ -13,12 +13,15 @@ import type { Emotion } from "@/lib/mascot-shared";
  *
  * ## The pose
  *
- * He lies on his front behind a parapet with his forearms crossed on top of it.
- * LEDGE_Y is the line where that parapet passes: everything above it is inside
- * the container, everything below hangs over the edge. His torso is clipped at
- * that line — his belly is behind the wall, so it must not be drawn below it —
- * while the arms and paws deliberately cross it. `ledgeOffset()` gives callers
- * the pixel offset that puts LEDGE_Y on their own edge.
+ * He leans out from behind a parapet. LEDGE_Y is the line where that parapet
+ * passes, the torso is clipped against it, and the container crops him there —
+ * so what you see is a bust in dungarees, not a floating cut-out.
+ *
+ * He had crossed forearms resting on that ledge through three drafts and they
+ * never read: folded arms need the elbows, the overlap and both hands to be
+ * legible at 200 pixels, and at that size they collapse into one lump whatever
+ * you do with the shading. Cutting them is what let the costume become the
+ * costume instead of a sliver of blue behind a limb.
  *
  * ## Expression
  *
@@ -47,30 +50,24 @@ const VIEW_H = 300;
 /**
  * The parapet line, in user units.
  *
- * Kept in sync by hand with the 0.18667 / 0.81333 factors in `.mascot-perch`
- * in globals.css — CSS cannot read this file. (300 - 244) / 300 = 0.18667.
- */
-const LEDGE_Y = 244;
-
-/**
- * How far below a container's bottom edge the artwork must be pushed for
- * LEDGE_Y to land on that edge.
- */
-export function ledgeOffset(width: number) {
-  return (width * (VIEW_H - LEDGE_Y)) / VIEW_W;
-}
-
-/**
- * The head is deliberately smaller than a first pass wants it to be.
+ * With no arms to rest on it, nothing hangs over the edge any more: the line is
+ * the bottom of the box, and the container clips him there. He reads as leaning
+ * out from behind a counter rather than over a wall.
  *
- * A big head is correct for this idiom, but at rx 76 it filled half the canvas
- * and left no room between the chin and the parapet — which meant the overalls
- * and neckerchief were drawn and then entirely hidden behind his own arms. The
- * outfit only exists if there is torso to put it on.
+ * Kept as a named constant rather than inlined because it is what the torso is
+ * clipped against, and because `.mascot-perch` in globals.css depends on it —
+ * CSS cannot read this file, so the two are kept in step by hand.
+ */
+const LEDGE_Y = VIEW_H;
+
+/**
+ * The head is deliberately smaller than a first pass wants it to be. A big head
+ * is correct for this idiom, but at rx 76 it filled half the canvas and left no
+ * room between the chin and the parapet for anything to be worn.
  */
 const HEAD = { cx: 150, cy: 124, rx: 68, ry: 62 };
 const EYE = { y: 116, dx: 28, rx: 15.5, ry: 17 };
-const BROW_Y = 84;
+const BROW_Y = 92;
 const MUZZLE = { cx: 150, cy: 158, rx: 41, ry: 30 };
 
 const LINE = "var(--mascot-line)";
@@ -134,7 +131,7 @@ const FACES: Record<Emotion, Face> = {
     // top of the eye they leave a band of white underneath, and that is an eye
     // ROLL, which reads as scepticism. Same for a heavy upper lid: hooded eyes
     // are suspicious, not thoughtful. Both were wrong here before.
-    browY: -13, browInner: -9, browOuter: 0, asymmetry: -11,
+    browY: -8, browInner: -6, browOuter: 0, asymmetry: -6,
     lidTop: 0.1, lidBottom: 0, eyeScale: 1, look: [-7, -7],
     mouth: "purse", ears: 6, tilt: -8, blink: true, motion: "breathe",
     prop: "question",
@@ -149,7 +146,7 @@ const FACES: Record<Emotion, Face> = {
   // The lower lid comes up rather than the upper coming down: that is the
   // difference between a smile that reaches the eyes and one that does not.
   thrilled: {
-    browY: -10, browInner: -6, browOuter: -8, asymmetry: -2,
+    browY: -9, browInner: -6, browOuter: -7, asymmetry: -2,
     lidTop: 0, lidBottom: 0.22, eyeScale: 1.14, look: [0, -1],
     mouth: "grin", ears: -16, tilt: 4, blink: false, motion: "bob",
     prop: "spark",
@@ -174,7 +171,7 @@ const FACES: Record<Emotion, Face> = {
   },
 
   surprised: {
-    browY: -16, browInner: -14, browOuter: -13, asymmetry: -2,
+    browY: -11, browInner: -8, browOuter: -7, asymmetry: -2,
     lidTop: 0, lidBottom: 0, eyeScale: 1.32, look: [0, 1],
     mouth: "o", ears: -20, tilt: -4, blink: false, motion: "still",
     prop: "exclaim",
@@ -192,7 +189,7 @@ const FACES: Record<Emotion, Face> = {
   // Inner brows down and outer up — the exact reverse of sheepish, and the
   // reason this reads as anger rather than as a frown. He huffs.
   stern: {
-    browY: 6, browInner: 11, browOuter: -6, asymmetry: 0,
+    browY: 3, browInner: 7, browOuter: -6, asymmetry: 0,
     lidTop: 0.42, lidBottom: 0.18, eyeScale: 1, look: [0, 2],
     mouth: "frown", ears: 14, tilt: 0, blink: false, motion: "still",
     prop: "huff",
@@ -237,76 +234,38 @@ function Mouth({ shape }: { shape: Mouth }) {
 
   switch (shape) {
     case "smile":
-      return <path d="M 128 162 Q 150 182 172 162" {...line} />;
+      return <path d="M 131 177 Q 150 189 169 177" {...line} />;
     case "smile-small":
-      return <path d="M 136 164 Q 150 176 164 164" {...line} />;
+      return <path d="M 137 178 Q 150 186 163 178" {...line} />;
     case "purse":
       // Off-centre on purpose: a symmetric small mouth reads as neutral.
-      return <path d="M 136 170 Q 146 164 158 168" {...line} />;
+      return <path d="M 137 180 Q 146 175 157 179" {...line} />;
     case "wavy":
-      return <path d="M 130 167 Q 140 156 150 165 Q 160 175 170 163" {...line} />;
+      return <path d="M 132 179 Q 141 172 150 178 Q 159 184 168 176" {...line} />;
     case "frown":
-      return <path d="M 130 179 Q 150 160 170 179" {...line} />;
+      return <path d="M 132 188 Q 150 176 168 188" {...line} />;
     case "o":
       return (
         <g>
-          <ellipse cx={150} cy={174} rx={13} ry={16} {...cavity} />
-          <ellipse cx={150} cy={184} rx={6.5} ry={4} fill="var(--mascot-tongue)" />
+          <ellipse cx={150} cy={180} rx={10} ry={11} {...cavity} />
+          <ellipse cx={150} cy={185} rx={5} ry={3} fill="var(--mascot-tongue)" />
         </g>
       );
     case "smile-open":
       return (
         <g>
-          <path d="M 127 161 Q 150 192 173 161 Z" {...cavity} />
-          <path d="M 140 177 Q 150 188 160 177 Z" fill="var(--mascot-tongue)" />
+          <path d="M 132 175 Q 150 195 168 175 Z" {...cavity} />
+          <path d="M 142 179 Q 150 187 158 179 Z" fill="var(--mascot-tongue)" />
         </g>
       );
     case "grin":
       return (
         <g>
-          <path d="M 121 156 Q 150 201 179 156 Z" {...cavity} />
-          <path d="M 136 179 Q 150 195 164 179 Z" fill="var(--mascot-tongue)" />
+          <path d="M 128 173 Q 150 200 172 173 Z" {...cavity} />
+          <path d="M 139 181 Q 150 192 161 181 Z" fill="var(--mascot-tongue)" />
         </g>
       );
   }
-}
-
-/**
- * A forepaw: a pad with three toes bulging from its leading edge.
- *
- * The toes are separate circles, which would show their own contours where they
- * overlap the pad. So the union is outlined the standard way — every shape is
- * drawn twice, first with a fat stroke that bleeds outwards, then filled with
- * no stroke to bury the internal lines. What survives is the outer contour.
- *
- * `flip` is +1 when the paw points right, -1 when it points left.
- */
-function Paw({ x, y, flip, tilt = 0 }: { x: number; y: number; flip: number; tilt?: number }) {
-  const shapes = (
-    <>
-      <ellipse rx={25} ry={19} />
-      <circle cx={flip * 17} cy={-10} r={9} />
-      <circle cx={flip * 23} cy={2} r={9.5} />
-      <circle cx={flip * 15} cy={12} r={9} />
-    </>
-  );
-
-  return (
-    <g transform={`translate(${x} ${y}) rotate(${tilt})`}>
-      <g stroke={LINE} strokeWidth={STROKE * 2} strokeLinejoin="round" fill="var(--mascot-fur)">
-        {shapes}
-      </g>
-      <g fill="var(--mascot-fur)">{shapes}</g>
-      <path
-        d={`M ${flip * 11} -16 q ${flip * 4} 7 ${flip * 2} 13`}
-        stroke={LINE} strokeWidth={2.8} strokeLinecap="round" fill="none" opacity={0.6}
-      />
-      <path
-        d={`M ${flip * 12} 5 q ${flip * 4} 6 ${flip * 1} 12`}
-        stroke={LINE} strokeWidth={2.8} strokeLinecap="round" fill="none" opacity={0.6}
-      />
-    </g>
-  );
 }
 
 /** The punctuation that floats beside his head while he thinks or reacts. */
@@ -386,9 +345,6 @@ export function Mascot({
         <clipPath id={id("above-ledge")}>
           <rect x={-40} y={-40} width={VIEW_W + 80} height={LEDGE_Y + 40} />
         </clipPath>
-        <clipPath id={id("crown")}>
-          <path d="M 82 86 C 76 34 114 16 150 16 C 186 16 224 34 218 86 Z" />
-        </clipPath>
         {([-1, 1] as const).map((side) => (
           <clipPath key={side} id={id(`eye${side > 0 ? "r" : "l"}`)}>
             <ellipse
@@ -403,66 +359,90 @@ export function Mascot({
 
       <g style={{ animation: motion, transformOrigin: `150px ${LEDGE_Y}px` }}>
         {/* ------------------------------------------------------- ears -- */}
-        {/* Behind the head, and they lag its motion rather than tracking it —
-            soft things do not turn on the same frame as the skull. */}
-        {([-1, 1] as const).map((side) => (
-          <g
-            key={side}
-            style={{
-              transformOrigin: `${150 + side * 48}px 98px`,
-              transform: `rotate(${side * face.ears}deg)`,
-              transition: `transform ${EASE}`,
-              animation:
-                face.motion === "still"
-                  ? "none"
-                  : `rusty-ear 4.6s ease-in-out ${side > 0 ? 0.5 : 0}s infinite`,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              ...({ "--ear-swing": `${side * 3.5}deg` } as any),
-            }}
-          >
-            <path
-              d={earPath(side)}
-              fill="var(--mascot-fur-mid)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
-            />
-            <path
-              d={earPath(side)}
-              fill="var(--mascot-fur-dark)" opacity={0.3}
-              style={{ transformOrigin: `${150 + side * 48}px 140px`, transform: "scale(0.86)" }}
-            />
-          </g>
-        ))}
+        {/* Ears live INSIDE the head's tilt, not beside it. They used to be
+            siblings of the head group, so tilting the head left the ears where
+            they were — which is why one ear drifted off the side of the skull
+            on every tilted expression. They still lag the tilt by animating
+            separately, because soft things do not turn on the same frame as the
+            bone they hang off. */}
+        <g
+          style={{
+            transformOrigin: "150px 200px",
+            transform: `rotate(${face.tilt}deg)`,
+            transition: `transform ${EASE}`,
+          }}
+        >
+          {([-1, 1] as const).map((side) => (
+            <g
+              key={side}
+              style={{
+                transformOrigin: `${150 + side * 48}px 98px`,
+                transform: `rotate(${side * face.ears}deg)`,
+                transition: `transform ${EASE}`,
+                animation:
+                  face.motion === "still"
+                    ? "none"
+                    : `rusty-ear 4.6s ease-in-out ${side > 0 ? 0.5 : 0}s infinite`,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ...({ "--ear-swing": `${side * 3.5}deg` } as any),
+              }}
+            >
+              <path
+                d={earPath(side)}
+                fill="var(--mascot-fur-mid)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
+              />
+              <path
+                d={earPath(side)}
+                fill="var(--mascot-fur-dark)" opacity={0.3}
+                style={{ transformOrigin: `${150 + side * 48}px 140px`, transform: "scale(0.86)" }}
+              />
+            </g>
+          ))}
+        </g>
 
         {/* ------------------------------------- body, behind the parapet -- */}
+        {/* No arms. Folded forearms need the elbows, the overlap and the two
+            hands all to read at 200px, and they did not; without them the
+            silhouette is a clean bust and the overalls finally have room to be
+            the costume rather than a sliver of blue behind a limb. */}
         <g clipPath={`url(#${id("above-ledge")})`}>
           <path
-            d="M 62 268 C 64 206 102 186 150 186 C 198 186 236 206 238 268 Z"
+            d="M 48 300 C 50 208 100 186 150 186 C 200 186 250 208 252 300 Z"
             fill="var(--mascot-fur)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
           />
 
-          {/* Denim bib and straps — the engineer's overalls. Ordered so the
-              straps run under the bib's top edge, the way real ones buckle. */}
+          {/* The dungarees. Straps first so the bib's top edge covers where they
+              buckle, the way real ones do. */}
           {([-1, 1] as const).map((side) => (
             <path
               key={side}
-              d={`M ${150 + side * 28} 206 C ${150 + side * 44} 200 ${150 + side * 58} 210 ${150 + side * 62} 234`}
-              stroke="var(--mascot-denim)" strokeWidth={16} strokeLinecap="round" fill="none"
+              d={`M ${150 + side * 44} 220 C ${150 + side * 58} 206 ${150 + side * 70} 208 ${150 + side * 77} 226`}
+              stroke="var(--mascot-denim)" strokeWidth={17} strokeLinecap="round" fill="none"
             />
           ))}
           <path
-            d="M 106 240 C 106 220 126 212 150 212 C 174 212 194 220 194 240 L 194 268 L 106 268 Z"
+            d="M 98 244 C 98 220 122 210 150 210 C 178 210 202 220 202 244 L 202 300 L 98 300 Z"
             fill="var(--mascot-denim)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
           />
+          {/* Brass buckles where the straps meet the bib. */}
           {([-1, 1] as const).map((side) => (
-            <circle
-              key={side}
-              cx={150 + side * 29} cy={220} r={5.5}
-              fill="var(--mascot-brass)" stroke={LINE} strokeWidth={3}
-            />
+            <g key={side}>
+              <rect
+                x={150 + side * 46 - 8} y={214} width={16} height={13} rx={3}
+                fill="var(--mascot-brass)" stroke={LINE} strokeWidth={3}
+              />
+              <circle cx={150 + side * 46} cy={220.5} r={2.6} fill={LINE} opacity={0.65} />
+            </g>
           ))}
-          {/* A chest pocket, so the denim is a garment and not a blue shape. */}
+          {/* A patch pocket and a seam, so the denim is a garment and not a
+              blue shape. */}
           <path
-            d="M 136 234 L 164 234 L 164 252 L 150 259 L 136 252 Z"
+            d="M 130 250 L 170 250 L 170 274 L 150 284 L 130 274 Z"
             fill="var(--mascot-denim-dark)" stroke={LINE} strokeWidth={3} strokeLinejoin="round"
+          />
+          <path
+            d="M 132 256 L 168 256"
+            stroke="var(--mascot-brass)" strokeWidth={2.4} strokeLinecap="round" opacity={0.75}
           />
 
           {/* Neckerchief, over the collarbone. */}
@@ -575,8 +555,8 @@ export function Mascot({
             // centre is cx + 24, not cx - 24. Getting this backwards silently
             // inverted every expression: stern wore sheepish's brows and vice
             // versa, which is why the faces read as almost-right and wrong.
-            const innerX = cx - side * 24;
-            const outerX = cx + side * 24;
+            const innerX = cx - side * 16;
+            const outerX = cx + side * 26;
             const innerY = BROW_Y + lift + face.browInner;
             const outerY = BROW_Y + lift + face.browOuter;
 
@@ -584,7 +564,7 @@ export function Mascot({
               <path
                 key={side}
                 d={`M ${outerX} ${outerY} Q ${cx} ${(innerY + outerY) / 2 - 7} ${innerX} ${innerY}`}
-                stroke="var(--mascot-fur-dark)" strokeWidth={9} strokeLinecap="round" fill="none"
+                stroke="var(--mascot-fur-dark)" strokeWidth={6.5} strokeLinecap="round" fill="none"
                 style={{ transition: `d ${EASE}` }}
               />
             );
@@ -592,39 +572,31 @@ export function Mascot({
 
           {/* ------------------------------------------- nose and mouth -- */}
           <path
-            d="M 150 128 C 166 128 172 137 168 145 C 164 153 150 156 150 156 C 150 156 136 153 132 145 C 128 137 134 128 150 128 Z"
+            d="M 150 124 C 166 124 172 133 168 141 C 164 149 150 152 150 152 C 150 152 136 149 132 141 C 128 133 134 124 150 124 Z"
             fill="var(--mascot-nose)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
           />
-          <path d="M 150 154 L 150 163" stroke={LINE} strokeWidth={4} strokeLinecap="round" />
+          <path d="M 150 152 L 150 172" stroke={LINE} strokeWidth={4} strokeLinecap="round" />
           <Mouth shape={face.mouth} />
 
-          {/* --------------------------------------------------- cap -- */}
-          <g>
-            <path
-              d="M 82 86 C 76 34 114 16 150 16 C 186 16 224 34 218 86 Z"
-              fill="var(--mascot-cap)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
-            />
-            <g clipPath={`url(#${id("crown")})`}>
-              {[-2, -1, 0, 1, 2].map((i) => (
+          {/* The anger mark, on his forehead. It lives inside the head group
+              so it travels with a head tilt. */}
+          {face.prop === "huff" && (
+            <g
+              style={{
+                transformOrigin: "198px 92px",
+                animation: "rusty-vex 1.4s ease-in-out infinite",
+              }}
+            >
+              {[0, 60, 120].map((angle) => (
                 <path
-                  key={i}
-                  d={`M ${150 + i * 27} 10 L ${150 + i * 27 + 6} 90`}
-                  stroke="var(--mascot-cap-stripe)" strokeWidth={13} opacity={0.9}
+                  key={angle}
+                  d="M 187 92 L 209 92"
+                  stroke="var(--mascot-scarf)" strokeWidth={5} strokeLinecap="round"
+                  transform={`rotate(${angle} 198 92)`}
                 />
               ))}
             </g>
-            {/* Redrawn so the stripes stop cleanly at the crown's contour. */}
-            <path
-              d="M 82 86 C 76 34 114 16 150 16 C 186 16 224 34 218 86 Z"
-              fill="none" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
-            />
-            {/* The brim, seen head-on: a shallow lens under the crown. */}
-            <path
-              d="M 76 84 C 85 115 215 115 224 84 Z"
-              fill="var(--mascot-cap-dark)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
-            />
-            <circle cx={150} cy={18} r={7} fill="var(--mascot-cap-dark)" stroke={LINE} strokeWidth={3} />
-          </g>
+          )}
         </g>
 
         {/* ------------------------------------------------------ props -- */}
@@ -634,13 +606,13 @@ export function Mascot({
           [0, 1, 2].map((i) => (
             <circle
               key={i}
-              cx={250 + i * 11} cy={64 - i * 16} r={7 + i * 3}
+              cx={246 + i * 13} cy={70 - i * 21} r={7 + i * 3}
               fill="var(--mascot-steam)" stroke={LINE} strokeWidth={2.5}
               style={{
                 // Anchored to itself: an SVG element's default transform-origin
                 // resolves against the viewBox, which threw the outer puff clear
                 // of the drawing when `puff` scaled it up.
-                transformOrigin: `${250 + i * 11}px ${64 - i * 16}px`,
+                transformOrigin: `${246 + i * 13}px ${70 - i * 21}px`,
                 animation: `puff 2.6s ease-in-out ${i * 0.34}s infinite`,
               }}
             />
@@ -671,7 +643,7 @@ export function Mascot({
 
         {face.prop === "sweat" && (
           <path
-            d="M 228 62 C 237 77 237 86 228 88 C 219 86 219 77 228 62 Z"
+            d="M 234 54 C 243 69 243 78 234 80 C 225 78 225 69 234 54 Z"
             fill="var(--mascot-sweat)" stroke={LINE} strokeWidth={2.5} strokeLinejoin="round"
             style={{ animation: "bead 1.9s ease-in-out infinite" }}
           />
@@ -685,74 +657,19 @@ export function Mascot({
             [0, 1].map((i) => (
               <ellipse
                 key={`${side}-${i}`}
-                cx={150 + side * (50 + i * 17)} cy={154 + i * 13}
-                rx={9 + i * 3.5} ry={6.5 + i * 2.5}
+                cx={150 + side * (26 + i * 18)} cy={152 + i * 12}
+                rx={7 + i * 3} ry={5.5 + i * 2.5}
                 fill="var(--mascot-steam)" stroke={LINE} strokeWidth={2.5}
                 style={{
-                  transformOrigin: `${150 + side * 50}px 154px`,
-                  animation: `rusty-huff 1.8s ease-out ${i * 0.28}s infinite`,
+                  // Anchored on the nostril it leaves, so the puff grows away
+                  // from the snout instead of scaling about the viewBox centre.
+                  transformOrigin: `${150 + side * 16}px 148px`,
+                  animation: `rusty-huff 1.8s ease-out ${i * 0.3}s infinite`,
                 }}
               />
             )),
           )}
 
-        {/* --------------------------------------- arms, crossed on the ledge -- */}
-        {/* Arms folded on a parapet are NOT an X. They are two near-horizontal
-            forearms STACKED: the near one lies across the far one, each paw
-            resting by the other's elbow. Drawing them as diagonals meeting in
-            the middle is what made the earlier attempts unreadable.
-
-            So: the far forearm runs left-to-right and sits lower, its paw
-            emerging on the right. The near forearm runs right-to-left, sits
-            higher, and is drawn afterwards — its paw lands on top of the far
-            forearm, and that overlap is the moment the crossing becomes
-            legible. The far arm is a shade darker so it sits back.
-
-            Each is stroked twice, wide in the line colour then narrower in fur,
-            because that is how a stroked limb gets a contour. */}
-        {(
-          [
-            {
-              // Far: his right arm. Its paw ends up on the right, where the near
-              // arm's elbow covers the top half of it — a hand tucked under the
-              // other arm is half the signature of folded arms.
-              d: "M 58 268 C 104 262 168 258 206 248",
-              fill: "var(--mascot-fur-dark)",
-              paw: { x: 222, y: 252, flip: 1, tilt: -12 },
-              cuff: { x: 182, y: 254, r: -14 },
-            },
-            {
-              // Near: his left arm, laid across the far one, paw resting on it.
-              d: "M 244 238 C 202 228 148 232 114 246",
-              fill: "var(--mascot-fur)",
-              paw: { x: 100, y: 250, flip: -1, tilt: 12 },
-              cuff: { x: 140, y: 240, r: 8 },
-              // Where that paw lands on the far forearm. Without it the two
-              // limbs read as one shape no matter how they are drawn.
-              contact: { x: 104, y: 262 },
-            },
-          ] as const
-        ).map((arm, i) => (
-          <g key={i}>
-            <path d={arm.d} stroke={LINE} strokeWidth={40} strokeLinecap="round" fill="none" />
-            <path d={arm.d} stroke={arm.fill} strokeWidth={32} strokeLinecap="round" fill="none" />
-            {/* Rolled shirt cuff, where the sleeve stops. Drawn before the paw
-                so the paw overlaps it rather than floating beside it. */}
-            <g transform={`translate(${arm.cuff.x} ${arm.cuff.y}) rotate(${arm.cuff.r})`}>
-              <rect
-                x={-8} y={-19} width={16} height={38} rx={7}
-                fill="var(--mascot-denim)" stroke={LINE} strokeWidth={3.4}
-              />
-            </g>
-            {"contact" in arm && (
-              <ellipse
-                cx={arm.contact.x} cy={arm.contact.y} rx={27} ry={9}
-                fill="var(--mascot-line)" opacity={0.22}
-              />
-            )}
-            <Paw {...arm.paw} />
-          </g>
-        ))}
       </g>
     </svg>
   );

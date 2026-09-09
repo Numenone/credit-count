@@ -20,9 +20,9 @@ const SUGGESTIONS = [
 /**
  * The conversation modal.
  *
- * Rusty sits bottom-right with his paws over the top edge of the input box —
- * the same pose as the dashboard card, with the composer standing in for the
- * ledge. Built on <dialog> so focus trapping and Escape come from the platform.
+ * Rusty stands bottom-right behind the top edge of the composer — the same pose
+ * as on the dashboard card, with the composer standing in for the parapet. Built
+ * on <dialog> so focus trapping and Escape come from the platform.
  */
 export function MascotChat({
   open,
@@ -96,11 +96,11 @@ export function MascotChat({
           </button>
         </header>
 
-        {/* The bottom padding is Rusty's headroom: he leans up out of the
+        {/* The bottom padding is Rusty's headroom: he stands up out of the
             composer into this area, so the newest message has to clear him. */}
         <div
           ref={scroller}
-          className="flex-1 space-y-4 overflow-y-auto px-5 pb-5 pt-5 sm:pb-[10.5rem]"
+          className="flex-1 space-y-4 overflow-y-auto px-5 pb-5 pt-5 sm:pb-[13.5rem]"
         >
           {turns.length === 0 && (
             <div className="space-y-3">
@@ -170,13 +170,11 @@ export function MascotChat({
           )}
         </div>
 
-        {/* The composer is Rusty's ledge in here: he leans on its top edge, the
-            same pose as on the dashboard card with the border moved.
-
-            The top padding is not decoration — his paws hang 0.18667 × his
-            width below that edge, so the input has to start below them or he
-            sits on top of the controls. 200px × 0.18667 ≈ 38, plus a gap. */}
-        <div className="relative border-t border-[var(--line)] px-5 pb-5 pt-4 sm:pt-[3.75rem]">
+        {/* The composer is Rusty's parapet in here: he stands behind its top
+            edge, the same pose as on the dashboard card with the border moved.
+            Nothing of him crosses into this row, so the controls need no
+            clearance of their own. */}
+        <div className="relative border-t border-[var(--line)] px-5 pb-5 pt-4">
           <div className="mascot-perch-top mascot-perch-chat pointer-events-none absolute right-2 hidden sm:block">
             <Mascot emotion={pending ? "thinking" : emotion} />
           </div>

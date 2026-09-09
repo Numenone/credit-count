@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Mascot, ledgeOffset } from "@/components/mascot";
+import { Mascot } from "@/components/mascot";
 import { MascotChat, type Turn } from "@/components/mascot-chat";
 import type { Emotion } from "@/lib/mascot-shared";
 import { HISTORY_LIMIT } from "@/lib/mascot-shared";
@@ -10,10 +10,10 @@ import { ArrowRightIcon, SparkIcon } from "@/components/icons";
 /**
  * The dashboard's mascot card.
  *
- * Rusty lies on his front at the bottom of the card with his forepaws over the
- * bottom edge, which acts as the ledge of his cab. That overhang is the whole
- * point of the drawing, so the card opts out of clipping (`.mascot-ledge`) and
- * the artwork is pushed past the border rather than fitted inside it.
+ * Rusty leans out from behind the card's bottom edge, which acts as the parapet
+ * of his cab and crops him there. The card therefore clips — as a Tailwind
+ * utility rather than a bare rule, because unlayered CSS beats every @layer and
+ * would silently win against it.
  *
  * This component owns the conversation. The card and the modal are two views of
  * the same state, so asking from the card and asking from the modal are the same
@@ -93,14 +93,9 @@ export function MascotCard() {
     void send(trimmed);
   };
 
-  // He overhangs the card, so the section reserves clearance underneath for the
-  // paws before the next one begins. The widths here are the same numbers the
-  // .mascot-perch arithmetic consumes.
-  const clearance = Math.round(ledgeOffset(208)) - 12;
-
   return (
     <>
-      <section className="rise" style={{ paddingBottom: clearance }}>
+      <section className="rise">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold tracking-tight">Ask Rusty</h2>
           <p className="text-xs text-[var(--ink-3)]">
@@ -108,7 +103,7 @@ export function MascotCard() {
           </p>
         </div>
 
-        <div className="card mascot-ledge relative isolate p-5 pb-[7.5rem] sm:pb-6 sm:pr-[14rem]">
+        <div className="card relative isolate overflow-hidden p-5 pb-[8.5rem] sm:min-h-[13.75rem] sm:pb-6 sm:pr-[14rem]">
           <span className="chip chip-brand !py-1">
             <SparkIcon size={11} />
             AI mascot
@@ -151,10 +146,9 @@ export function MascotCard() {
             </button>
           )}
 
-          {/* He rests on the card's bottom edge — the paws deliberately cross
-              it. .mascot-perch is what lands his forearms exactly on the border
-              rather than near it, at either size. */}
-          <div className="mascot-perch mascot-perch-card mascot-arrive pointer-events-none absolute right-1 -z-10 sm:right-4">
+          {/* He leans out from behind the card's bottom edge, which crops him
+              there — .mascot-perch does the alignment at either size. */}
+          <div className="mascot-perch mascot-perch-card mascot-arrive pointer-events-none absolute -right-2 -z-10 sm:right-2">
             <Mascot emotion={pending ? "thinking" : emotion} />
           </div>
         </div>

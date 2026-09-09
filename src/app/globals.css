@@ -85,9 +85,9 @@
   --mascot-iris: #7a4a1f;
   --mascot-pupil: #241505;
   --mascot-tongue: #e2757f;
+  /* Kept past the cap it was named for: it is now the orange the question
+     mark is drawn in, and renaming it would churn every theme scope. */
   --mascot-cap: #e8622a;
-  --mascot-cap-dark: #b8410f;
-  --mascot-cap-stripe: #fbf1e2;
   --mascot-denim: #47638f;
   --mascot-denim-dark: #33486c;
   --mascot-shirt: #f6ece0;
@@ -703,17 +703,18 @@ body {
   100%    { opacity: 0; transform: translateY(-6px) scale(0.9); }
 }
 
+/* The anger mark on his forehead: a throb, not a spin. */
+@keyframes rusty-vex {
+  0%, 100% { opacity: 0.55; transform: scale(0.86); }
+  22%      { opacity: 1; transform: scale(1.12); }
+  46%      { opacity: 0.9; transform: scale(1); }
+}
+
 /* Two puffs out of each nostril, drifting down and away. */
 @keyframes rusty-huff {
   0%   { opacity: 0; transform: translateY(-4px) scale(0.4); }
   30%  { opacity: 0.85; }
   100% { opacity: 0; transform: translateY(14px) scale(1.3); }
-}
-
-/* The ledge the character rests on: his paws deliberately cross this edge, so
-   the card must not clip them. */
-.mascot-ledge {
-  overflow: visible;
 }
 
 /* Perching him is arithmetic, not eyeballing. His artwork puts the parapet line
@@ -728,14 +729,16 @@ body {
   width: var(--mascot-w);
 }
 
-/* Resting on the container's bottom edge (the dashboard card). */
+/* Leaning out from behind the container's bottom edge (the dashboard card),
+   which clips him — nothing overhangs now that he has no arms to rest on it. */
 .mascot-perch {
-  bottom: calc(var(--mascot-w) * -0.18667);
+  bottom: 0;
 }
 
-/* Resting on the container's top edge (the chat composer). */
+/* The same, against the container's top edge (the chat composer). The drawing
+   is square, so his full height is one --mascot-w. */
 .mascot-perch-top {
-  top: calc(var(--mascot-w) * -0.81333);
+  top: calc(var(--mascot-w) * -1);
 }
 
 /* The two places he appears. Media queries have to live here rather than in an
