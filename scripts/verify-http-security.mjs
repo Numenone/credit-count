@@ -12,6 +12,7 @@
  *
  * Run: node --env-file=.env.local scripts/verify-http-security.mjs
  */
+import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 
 const APP = (process.env.APP_URL ?? "https://credit-count-iota.vercel.app").replace(/\/$/, "");
@@ -74,6 +75,18 @@ async function request(path, { cookie, method = "GET", body } = {}) {
     json,
     headers: response.headers,
   };
+}
+
+/** The mascot's emotion enum, read from the module that defines it. */
+const KNOWN_EMOTIONS = new Set(
+  (readFileSync("src/lib/mascot-shared.ts", "utf8")
+    .match(/export const EMOTIONS = \[([\s\S]*?)\] as const;/)?.[1] ?? "")
+    .match(/"([a-z]+)"/g)
+    ?.map((quoted) => quoted.slice(1, -1)) ?? [],
+);
+if (KNOWN_EMOTIONS.size < 2) {
+  console.error("Could not read the emotion enum out of src/lib/mascot-shared.ts.");
+  process.exit(1);
 }
 
 const ADMIN_PAGES = ["/admin", "/admin/catalogue", "/admin/api"];
@@ -448,19 +461,11 @@ console.log("\nMascot");
       check(`${probe.name}: no system prompt in the reply`, !leaked);
 
       // The emotion is what selects an illustration, so it has to stay inside
-      // the enum no matter what the model returned.
-      const known = [
-        "idle",
-        "thinking",
-        "happy",
-        "thrilled",
-        "history",
-        "geography",
-        "surprised",
-        "sheepish",
-        "stern",
-      ];
-      check(`${probe.name}: emotion is a known value`, known.includes(emotion), String(emotion));
+      // the enum no matter what the model returned. Read out of the source
+      // rather than restated: a copy of this list here was stale within a day
+      // of the enum growing, and passed anyway because the probes happened not
+      // to elicit any of the new values.
+      check(`${probe.name}: emotion is a known value`, KNOWN_EMOTIONS.has(emotion), String(emotion));
     }
   } else {
     console.log("  [SKIP] live mascot probes — set E2E_MASCOT_LIVE=1 to spend tokens on them");
