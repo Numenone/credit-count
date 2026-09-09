@@ -97,15 +97,27 @@ export async function verifiedClaims(
   const jwks = await getJwks();
 
   if (jwks) {
-    // No jwt argument, so getSession() supplies it — that path also refreshes
-    // an expired token from the refresh cookie, which local verification must
-    // not skip.
-    const { data, error } = await supabase.auth.getClaims(undefined, { jwks });
-    if (!error && data?.claims?.sub) {
-      return { sub: String(data.claims.sub), email: data.claims.email as string | undefined };
+    try {
+      // No jwt argument, so getSession() supplies it — that path also refreshes
+      // an expired token from the refresh cookie, which local verification must
+      // not skip.
+      const { data, error } = await supabase.auth.getClaims(undefined, { jwks });
+      if (!error && data?.claims?.sub) {
+        return { sub: String(data.claims.sub), email: data.claims.email as string | undefined };
+      }
+      // An invalid signature or a genuinely expired token: no session.
+      if (error) return null;
+    } catch {
+      // getClaims rethrows anything that is not an AuthError, and a malformed
+      // token produces exactly that: an `alg: none` header with an empty
+      // signature came back as a 500 rather than a 401 until this was here.
+      //
+      // A token that cannot be parsed is not an exceptional condition, it is an
+      // unauthenticated request. Returning null says so, and keeps the failure
+      // on the same path as every other bad credential instead of on the one
+      // that produces a stack trace and an unhelpful status.
+      return null;
     }
-    // An invalid signature or a genuinely expired token: no session.
-    if (error) return null;
   }
 
   const {

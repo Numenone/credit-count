@@ -472,6 +472,89 @@ console.log("\nMascot");
   }
 }
 
+/* ------------------------------------------------------- token forgery -- */
+// The session is verified by checking the JWT's signature locally rather than
+// by asking Supabase Auth. That is much faster and it moves the trust: the
+// signature check IS the authentication now, so it has to be exercised
+// directly. Every token below is well-formed and would deserialise fine — only
+// the cryptography stops it.
+console.log("\nForged sessions");
+{
+  const client = createClient(SUPABASE_URL, ANON_KEY);
+  const { data: real } = await client.auth.signInWithPassword({
+    email: process.env.E2E_ENTHUSIAST_EMAIL,
+    password: process.env.E2E_ENTHUSIAST_PASSWORD,
+  });
+  const session = real.session;
+  const [header, payload, signature] = session.access_token.split(".");
+
+  const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url");
+  const decode = (part) => JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
+
+  const asCookie = (token) => {
+    const forged = { ...session, access_token: token };
+    const encoded = "base64-" + Buffer.from(JSON.stringify(forged), "utf8").toString("base64url");
+    const name = `sb-${PROJECT_REF}-auth-token`;
+    if (encoded.length <= CHUNK) return `${name}=${encoded}`;
+    const parts = [];
+    for (let i = 0; i * CHUNK < encoded.length; i++) {
+      parts.push(`${name}.${i}=${encoded.slice(i * CHUNK, (i + 1) * CHUNK)}`);
+    }
+    return parts.join("; ");
+  };
+
+  const refused = async (label, token) => {
+    const r = await request("/api/v1/me", { cookie: asCookie(token) });
+    check(label, r.status === 401, `${r.status}${r.json?.data?.id ? " — RETURNED A USER" : ""}`);
+  };
+
+  // Sanity: the untampered token must still work, or the checks below prove
+  // nothing except that everything is broken.
+  const honest = await request("/api/v1/me", { cookie: asCookie(session.access_token) });
+  check("the genuine token is accepted", honest.status === 200, String(honest.status));
+
+  // Impersonation: same signature, someone else's subject.
+  const otherSub = decode(payload);
+  otherSub.sub = "00000000-0000-0000-0000-000000000000";
+  await refused("a token claiming another user is refused", `${header}.${b64(otherSub)}.${signature}`);
+
+  // Privilege escalation through the claims.
+  const elevated = decode(payload);
+  elevated.role = "service_role";
+  await refused("a token claiming service_role is refused", `${header}.${b64(elevated)}.${signature}`);
+
+  // Algorithm confusion: "none" is the classic way past a verifier that trusts
+  // the header to tell it what to do.
+  const noneHeader = { ...decode(header), alg: "none" };
+  await refused("an alg:none token is refused", `${b64(noneHeader)}.${payload}.`);
+
+  // Downgrade to a symmetric algorithm, which a naive verifier might check
+  // against a public key it treats as a shared secret.
+  const hsHeader = { ...decode(header), alg: "HS256" };
+  await refused("an HS256-downgraded token is refused", `${b64(hsHeader)}.${payload}.${signature}`);
+
+  // A single flipped character in the signature.
+  const bent = signature.slice(0, -1) + (signature.at(-1) === "A" ? "B" : "A");
+  await refused("a token with a bent signature is refused", `${header}.${payload}.${bent}`);
+
+  // Long expired.
+  const stale = decode(payload);
+  stale.exp = Math.floor(Date.now() / 1000) - 86400;
+  await refused("an expired token is refused", `${header}.${b64(stale)}.${signature}`);
+
+  // Not a JWT at all.
+  await refused("a garbage token is refused", "not.a.token");
+
+  // And the proxy still turns a forged session away from a private page rather
+  // than rendering it.
+  const page = await request("/dashboard", { cookie: asCookie(`${header}.${b64(otherSub)}.${signature}`) });
+  check(
+    "a forged session cannot open a private page",
+    page.status >= 300 && page.status < 400 && (page.location ?? "").includes("/login"),
+    `${page.status}${page.location ? ` → ${new URL(page.location, APP).pathname}` : ""}`,
+  );
+}
+
 /* --------------------------------------------------------- llm dashboard -- */
 // The usage console is the one admin page that renders money. Two things have
 // to hold: an enthusiast never sees it, and an admin sees real figures rather
