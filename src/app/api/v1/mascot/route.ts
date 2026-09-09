@@ -57,10 +57,17 @@ const ABSURD = 20_000;
 // database instead removes the attack rather than limiting it, because a caller
 // no longer has any say in what the model is told it previously said. An id
 // that is not theirs simply resolves to no history.
-const requestSchema = z.object({
-  message: z.string().min(1, "Say something first").max(ABSURD),
-  conversationId: z.string().uuid().nullish(),
-});
+//
+// Strict, so a body still carrying a `history` field is refused rather than
+// quietly ignored. Ignoring it was safe — nothing read it — but it was not
+// honest, and it cost the caller a rate-limit turn to be told nothing. A
+// forged transcript now fails validation, before the claim, for free.
+const requestSchema = z
+  .object({
+    message: z.string().min(1, "Say something first").max(ABSURD),
+    conversationId: z.string().uuid().nullish(),
+  })
+  .strict();
 
 interface Config {
   gateway: Gateway;

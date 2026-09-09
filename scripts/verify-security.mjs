@@ -259,12 +259,17 @@ console.log("\nMascot rate limit");
   check("users cannot forge a rate-limit row", forgeUsage.error != null, forgeUsage.error?.message);
 
   // Burn a window down with a tiny allowance. This costs nothing — the counter
-  // lives in Postgres and no model call happens here. It does spend some of the
-  // enthusiast's real allowance for the current five-minute window, so that
-  // account may see a 429 from the mascot for a few minutes after a run.
+  // lives in Postgres and no model call happens here.
+  //
+  // Run as the second user, not the enthusiast. The counter is real, so
+  // whichever account these run against cannot talk to the mascot for the rest
+  // of its five-minute window, and the enthusiast is the account handed to
+  // reviewers. It was that account until a run left a person asking one
+  // question and being told to wait. A test that degrades the demo is a test
+  // with a side effect nobody signed up for.
   let refusedAt = null;
   for (let i = 1; i <= 6 && refusedAt === null; i++) {
-    const { data } = await a.client.rpc("claim_mascot_turn", { max_turns: 3, window_minutes: 5, max_per_day: 500 });
+    const { data } = await b.client.rpc("claim_mascot_turn", { max_turns: 3, window_minutes: 5, max_per_day: 500 });
     if (data === false) refusedAt = i;
   }
   check(
@@ -274,14 +279,14 @@ console.log("\nMascot rate limit");
   );
 
   // And it stays refused: a caller cannot reset the window by asking again.
-  const afterwards = await a.client.rpc("claim_mascot_turn", {
+  const afterwards = await b.client.rpc("claim_mascot_turn", {
     max_turns: 3, window_minutes: 5, max_per_day: 500,
   });
   check("a spent window cannot be reset by the caller", afterwards.data === false);
 
   // The daily ceiling is a separate gate: a caller with burst headroom is still
   // refused once the day's budget is gone. A burst limit is not a budget.
-  const dayCapped = await a.client.rpc("claim_mascot_turn", {
+  const dayCapped = await b.client.rpc("claim_mascot_turn", {
     max_turns: 10000, window_minutes: 5, max_per_day: 1,
   });
   check("the daily ceiling refuses independently of the burst window",
