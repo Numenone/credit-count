@@ -660,14 +660,22 @@ body {
    custom property and speed on the duration. Neither restarts anything, so the
    body keeps breathing through an expression change instead of jumping.
 
-   And no rotation. It used to rotate 1.2deg about the ledge line, which is 176
-   units below the head — a small angle that far from the pivot becomes visible
-   sideways travel at the top of the drawing, so the body appeared to swing left
-   and right rather than breathe. Character comes from the head tilt and the
-   ears, which are posed per expression and transition into place. */
+   It scales from the base and never translates, which is what breathing is.
+   Translating was the second attempt and it was worse than it looked in
+   isolation: she is a bust cropped at the bottom, her base sits exactly on the
+   card's clip line, so sliding her down pushed her hem out of the crop and
+   sliding her back brought it in again. Material appearing and disappearing at
+   an edge does not read as breathing, it reads as the drawing changing size.
+   Scaling about `150px 300px` pins the hem to that line — nothing ever crosses
+   it — while the head still rises and falls.
+
+   And no rotation. It used to rotate 1.2deg about the same point, 176 units
+   below the head; that far from the pivot a small angle becomes visible
+   sideways travel at the top of the drawing, so she appeared to sway. Character
+   comes from the head tilt and the ears, posed per expression. */
 @keyframes rusty-idle {
-  0%, 100% { transform: translateY(0) scaleX(1); }
-  50%      { transform: translateY(var(--rusty-lift, 2.4px)) scaleX(1.006); }
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(var(--rusty-swell, 1.004), var(--rusty-rise, 1.008)); }
 }
 
 /* Ears are soft, so they lag behind the head rather than moving with it. */

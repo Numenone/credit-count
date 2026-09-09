@@ -43,10 +43,39 @@ describe("the idle animation", () => {
   });
 
   it("still varies, so the expressions are not all the same", () => {
-    const lifts = new Set(
-      EMOTIONS.map((emotion) => render(emotion).match(/--rusty-lift:\s*([\d.]+px)/)?.[1]),
+    const rises = new Set(
+      EMOTIONS.map((emotion) => render(emotion).match(/--rusty-rise:\s*([\d.]+)/)?.[1]),
     );
-    expect(lifts.size).toBeGreaterThan(1);
+    expect(rises.size).toBeGreaterThan(1);
+  });
+
+  it("scales rather than translating", () => {
+    // She is a bust cropped at the bottom, and her hem sits on the clip line.
+    // A translation pushes the hem through that line and back, so material
+    // appears and disappears at an edge — which reads as the drawing changing
+    // size, not as breathing. Scaling from the same line pins the hem.
+    //
+    // Asserted on the values the component supplies, since the keyframes live
+    // in the stylesheet: a rise is a scale factor near 1, and a factor with a
+    // unit on it would be a translation wearing the wrong name.
+    for (const emotion of EMOTIONS) {
+      const html = render(emotion);
+      const rise = html.match(/--rusty-rise:\s*([^;"]+)/)?.[1];
+      const swell = html.match(/--rusty-swell:\s*([^;"]+)/)?.[1];
+
+      expect(rise, `${emotion} has no rise`).toBeDefined();
+      expect(swell, `${emotion} has no swell`).toBeDefined();
+      // Unitless, so it can only be read as a scale factor.
+      expect(rise).toMatch(/^[\d.]+$/);
+      expect(swell).toMatch(/^[\d.]+$/);
+      // Close to 1. A body that visibly changes size is the thing being fixed.
+      expect(Number(rise)).toBeGreaterThanOrEqual(1);
+      expect(Number(rise)).toBeLessThan(1.04);
+      expect(Number(swell)).toBeGreaterThanOrEqual(1);
+      expect(Number(swell)).toBeLessThan(1.02);
+      // The chest widens less than the body rises, or she inflates sideways.
+      expect(Number(swell)).toBeLessThanOrEqual(Number(rise));
+    }
   });
 });
 

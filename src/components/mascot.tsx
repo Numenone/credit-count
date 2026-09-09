@@ -531,12 +531,20 @@ export function Mascot({
   // different one per expression made the whole body snap on every emotion
   // change, and the "still" setting of `animation: none` snapped it hardest.
   // Both of these are read mid-flight without restarting the cycle.
+  // `rise` lifts the head by scaling the body up from its hem, `swell` widens
+  // the chest. Never a translation: she is cropped at the bottom and her hem
+  // sits on the clip line, so sliding her pushes the hem through it and back,
+  // which reads as the drawing resizing rather than as breathing. Scaling from
+  // that same line keeps the hem exactly where it is.
+  //
+  // The head sits about 176 units above the pivot, so `rise` of 1.008 moves it
+  // roughly 1.4 units — under a pixel and a half at the size she is drawn.
   const idle = {
-    bob: { lift: 5, period: 1.9 },
-    breathe: { lift: 2.4, period: 4.2 },
+    bob: { rise: 1.02, swell: 1.008, period: 1.9 },
+    breathe: { rise: 1.008, swell: 1.004, period: 4.2 },
     // Braced, not frozen. A character who stops moving entirely reads as a
-    // rendering bug, and stopping is what caused the snap.
-    still: { lift: 0.7, period: 5.6 },
+    // rendering bug, and stopping outright is what caused the earlier snap.
+    still: { rise: 1.003, swell: 1.001, period: 5.6 },
   }[face.motion];
 
   return (
@@ -578,7 +586,10 @@ export function Mascot({
         style={{
           animation: `rusty-idle ${idle.period}s ease-in-out infinite`,
           transformOrigin: `150px ${LEDGE_Y}px`,
-          ...vars({ "--rusty-lift": `${idle.lift}px` }),
+          ...vars({
+            "--rusty-rise": `${idle.rise}`,
+            "--rusty-swell": `${idle.swell}`,
+          }),
         }}
       >
         {/* ------------------------------------------------------- ears -- */}
