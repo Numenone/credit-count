@@ -3,8 +3,6 @@ import { z } from "zod";
 import { apiError, getAuthedClient, json, readJson, unauthorised } from "@/lib/api";
 import {
   HISTORY_LIMIT,
-  MASCOT_MAX_TOKENS,
-  MASCOT_MODEL,
   MAX_REPLY_CHARS,
   RESPONSE_SCHEMA,
   SYSTEM_PROMPT,
@@ -13,6 +11,8 @@ import {
   isWellFormedHistory,
   sanitise,
 } from "@/lib/mascot";
+import { describeContext, loadMascotContext } from "@/lib/mascot-context";
+import { GATEWAY_INFO, MODEL_IDS, priceCall, type Gateway } from "@/lib/mascot-models";
 
 /**
  * POST /api/v1/mascot — ask the mascot a question.
@@ -31,7 +31,8 @@ import {
  *      table with RLS on and no policies — the caller cannot read or reset
  *      their own allowance. Both a burst window and a daily ceiling.
  *
- * Only then does a token get bought.
+ * Only then does a token get bought, and every call that gets that far is
+ * recorded — spend included — whether it succeeded or not.
  *
  * What actually contains prompt injection here is none of the above: it is that
  * the model's output never becomes anything but display text. No tool, no
@@ -63,6 +64,24 @@ const requestSchema = z.object({
   history: z.array(turnSchema).max(HISTORY_LIMIT).optional(),
 });
 
+interface Config {
+  gateway: Gateway;
+  model: string;
+  max_tokens: number;
+  effort: "low" | "medium" | "high";
+  burst_cap: number;
+  daily_cap: number;
+}
+
+const FALLBACK: Config = {
+  gateway: "anthropic",
+  model: "claude-opus-5",
+  max_tokens: 500,
+  effort: "low",
+  burst_cap: 8,
+  daily_cap: 60,
+};
+
 function sameOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (!origin) return true; // Same-origin fetches may omit it entirely.
@@ -71,6 +90,11 @@ function sameOrigin(request: Request) {
   } catch {
     return false;
   }
+}
+
+/** Whether the environment holds what a gateway needs to be used at all. */
+function gatewayReady(gateway: Gateway) {
+  return GATEWAY_INFO[gateway].requires.every((key) => Boolean(process.env[key]));
 }
 
 export async function POST(request: Request) {
@@ -86,14 +110,6 @@ export async function POST(request: Request) {
 
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorised();
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return apiError(
-      "Not configured",
-      503,
-      "The mascot needs an ANTHROPIC_API_KEY on the server. Everything else works without it.",
-    );
-  }
 
   const body = await readJson(request);
   if (!body) return apiError("Bad request", 400, "Body must be a JSON object.");
@@ -133,16 +149,42 @@ export async function POST(request: Request) {
     return apiError("Unprocessable entity", 422, "That conversation is too long to continue.");
   }
 
+  // The admin console can change the model, the gateway and both caps without a
+  // deploy. Anything unrecognised falls back rather than being passed through —
+  // a bad row here would otherwise take the endpoint down for everyone.
+  const { data: row } = await supabase
+    .from("mascot_config")
+    .select("gateway, model, max_tokens, effort, burst_cap, daily_cap")
+    .maybeSingle<Config>();
+
+  const config: Config = {
+    ...FALLBACK,
+    ...(row ?? {}),
+    ...(row && MODEL_IDS.includes(row.model) ? {} : { model: FALLBACK.model }),
+    ...(row && GATEWAY_INFO[row.gateway] ? {} : { gateway: FALLBACK.gateway }),
+  };
+
+  if (!gatewayReady(config.gateway)) {
+    return apiError(
+      "Not configured",
+      503,
+      `The ${GATEWAY_INFO[config.gateway].label} gateway needs ` +
+        `${GATEWAY_INFO[config.gateway].requires.join(", ")} on the server. ` +
+        "Everything else works without it.",
+    );
+  }
+
   // Claimed before the model call, so a rejected turn still costs the caller
   // their allowance rather than handing them a free retry.
   const { data: allowed, error: limitError } = await supabase.rpc("claim_mascot_turn", {
-    max_turns: 8,
+    max_turns: config.burst_cap,
     window_minutes: 5,
-    max_per_day: 60,
+    max_per_day: config.daily_cap,
   });
 
   if (limitError) return apiError("Bad request", 400, limitError.message);
   if (allowed !== true) {
+    await record(supabase, config, 0, 0, 0, null, "rate_limited", null);
     return apiError(
       "Too many requests",
       429,
@@ -150,12 +192,18 @@ export async function POST(request: Request) {
     );
   }
 
+  // What she knows about the person asking. Read on the caller's own session,
+  // so row-level security scopes it to their rows and there is no path by which
+  // she can be made to describe anyone else's history.
+  const context = await loadMascotContext(supabase);
+
   const anthropic = new Anthropic();
+  const started = Date.now();
 
   // History is treated exactly like the new message: content, never
   // instruction. There is no channel here through which a caller can add a
   // system turn — the roles are constrained to user and assistant by the schema
-  // above, and the order by isWellFormed.
+  // above, and the order by isWellFormedHistory.
   const messages: Anthropic.MessageParam[] = [
     ...history.map((turn) => ({ role: turn.role, content: turn.text })),
     { role: "user" as const, content: fenceMessage(message) },
@@ -164,14 +212,14 @@ export async function POST(request: Request) {
   try {
     const response = await anthropic.messages.create(
       {
-        model: MASCOT_MODEL,
-        max_tokens: MASCOT_MAX_TOKENS,
-        system: SYSTEM_PROMPT,
+        model: config.model,
+        max_tokens: config.max_tokens,
+        system: `${SYSTEM_PROMPT}\n\nWHO YOU ARE TALKING TO\n${describeContext(context)}`,
         // Low effort suits a character answering in one short paragraph, and is
         // documented as strong on this model. Thinking stays on (the default):
         // disabling it is the setting that leaks reasoning into visible text.
         output_config: {
-          effort: "low",
+          effort: config.effort,
           format: { type: "json_schema", schema: RESPONSE_SCHEMA },
         },
         messages,
@@ -181,7 +229,12 @@ export async function POST(request: Request) {
       { timeout: 30_000, maxRetries: 1 },
     );
 
+    const latency = Date.now() - started;
+    const inTokens = response.usage?.input_tokens ?? 0;
+    const outTokens = response.usage?.output_tokens ?? 0;
+
     if (response.stop_reason === "refusal") {
+      await record(supabase, config, inTokens, outTokens, latency, "stern", "refusal", null);
       return json({
         data: {
           emotion: "stern",
@@ -192,6 +245,7 @@ export async function POST(request: Request) {
 
     const text = response.content.find((block) => block.type === "text");
     if (!text || text.type !== "text") {
+      await record(supabase, config, inTokens, outTokens, latency, null, "error", "no_text_block");
       return apiError("Bad gateway", 502, "The mascot did not answer. Try again.");
     }
 
@@ -201,6 +255,7 @@ export async function POST(request: Request) {
     try {
       answer = JSON.parse(text.text) as typeof answer;
     } catch {
+      await record(supabase, config, inTokens, outTokens, latency, null, "error", "unparseable");
       return apiError("Bad gateway", 502, "The mascot lost her train of thought. Ask again.");
     }
 
@@ -211,17 +266,58 @@ export async function POST(request: Request) {
     const reply =
       sanitise(raw, MAX_REPLY_CHARS) || "Sorry — I lost my train of thought there. Ask me again?";
 
+    await record(supabase, config, inTokens, outTokens, latency, emotion, "ok", null);
     return json({ data: { emotion, reply } });
   } catch (error) {
+    const latency = Date.now() - started;
+
     // Never surface the provider's error text: it can name the model, the
-    // account and the prompt, and this endpoint is reachable by any user.
+    // account and the prompt, and this endpoint is reachable by any user. The
+    // ledger gets a short machine-readable reason instead.
     if (error instanceof Anthropic.RateLimitError) {
+      await record(supabase, config, 0, 0, latency, null, "error", "upstream_rate_limit");
       return apiError("Too many requests", 429, "Rusty is busy right now. Try again in a moment.");
     }
     if (error instanceof Anthropic.AuthenticationError) {
+      await record(supabase, config, 0, 0, latency, null, "error", "auth");
       return apiError("Not configured", 503, "The mascot's API credentials are not valid.");
     }
     console.error("mascot request failed", error);
+    await record(supabase, config, 0, 0, latency, null, "error", "upstream");
     return apiError("Bad gateway", 502, "The mascot could not answer just now.");
+  }
+}
+
+/**
+ * Appends the call to the ledger.
+ *
+ * Deliberately never throws: a failure to record is not a reason to fail a
+ * request the user already paid for. It is also priced here rather than at read
+ * time, so history keeps what it actually cost when rates change.
+ */
+async function record(
+  supabase: Awaited<ReturnType<typeof getAuthedClient>>["supabase"],
+  config: Config,
+  inputTokens: number,
+  outputTokens: number,
+  latencyMs: number,
+  emotion: string | null,
+  outcome: "ok" | "refusal" | "error" | "rate_limited",
+  errorKind: string | null,
+) {
+  try {
+    await supabase.rpc("record_mascot_call", {
+      p_gateway: config.gateway,
+      p_model: config.model,
+      p_input_tokens: inputTokens,
+      p_output_tokens: outputTokens,
+      p_cost_usd: priceCall(config.model, inputTokens, outputTokens),
+      p_latency_ms: latencyMs,
+      p_emotion: emotion,
+      p_outcome: outcome,
+      p_error_kind: errorKind,
+    });
+  } catch (error) {
+    console.error("could not record mascot usage", error);
   }
 }

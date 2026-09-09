@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/catalogue", label: "Catalogue" },
+  { href: "/admin/llm", label: "LLM usage" },
   { href: "/admin/api", label: "API explorer" },
 ];
 
@@ -15,7 +16,7 @@ export function AdminNav() {
   return (
     // No overflow-x here. Setting it makes the browser compute overflow-y as
     // auto too, and the active-tab indicator sits at -bottom-px — just outside
-    // the box — which was enough to produce a stray vertical scrollbar. Three
+    // the box — which was enough to produce a stray vertical scrollbar. The
     // tabs wrap perfectly well instead.
     <nav
       aria-label="Admin sections"

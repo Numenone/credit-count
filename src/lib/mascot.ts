@@ -76,28 +76,28 @@ export const RESPONSE_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export const MASCOT_MODEL = "claude-opus-5";
-
 /**
  * Cost controls.
  *
  * A chat endpoint's bill is (prompt + completion) × turns, and every one of
- * those three is bounded here rather than hoped about:
+ * those three is bounded rather than hoped about:
  *
- *  - MASCOT_MAX_TOKENS caps the completion. She answers in one short paragraph,
- *    so 1200 was three times what the voice ever needs.
- *  - HISTORY_LIMIT caps the prompt's growth. Six turns is two exchanges of
- *    context either side, which is what a question like "and the other one?"
- *    actually needs; twelve doubled the prompt on every long conversation for
- *    almost no gain.
- *  - The system prompt itself was rewritten to about half its length. It is
+ *  - The completion cap and the model both live in `mascot_config`, so an admin
+ *    can move to a cheaper model without a deploy. 500 tokens is the default;
+ *    she answers in one short paragraph, so 1200 was three times what the voice
+ *    ever needs.
+ *  - HISTORY_LIMIT caps the prompt's growth. Six turns is three exchanges of
+ *    context, which is what a question like "and the other one?" actually
+ *    needs; twelve doubled the prompt on every long conversation for almost no
+ *    gain.
+ *  - The system prompt was rewritten to about half its length. It is
  *    deliberately NOT marked for prompt caching: at this size it falls under
  *    the model's minimum cacheable prefix, so a cache breakpoint would be
  *    silently ignored and the shorter prompt is the real saving.
  *
- * The per-caller ceiling lives in Postgres — see claim_mascot_turn().
+ * The per-caller ceiling lives in Postgres — see claim_mascot_turn() — and what
+ * every call actually cost lands in mascot_calls.
  */
-export const MASCOT_MAX_TOKENS = 500;
 
 /** Hard cap on what is rendered, whatever the model returns. */
 export const MAX_REPLY_CHARS = 1600;

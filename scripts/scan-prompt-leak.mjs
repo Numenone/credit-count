@@ -23,10 +23,17 @@ if (!existsSync(BUNDLE)) {
 }
 
 /**
- * Distinctive phrases from the prompt and the model configuration.
+ * Distinctive phrases from the prompt.
  *
  * Chosen to be specific enough that a match is unambiguous, and spread across
  * the prompt so that leaking any part of it trips at least one.
+ *
+ * "ANTHROPIC_API_KEY" was on this list and had to come off. The admin console
+ * tells an operator which environment variables each gateway needs, so the
+ * NAME is in the bundle by design — and a variable's name is public (it is in
+ * .env.example). What must never appear is a value, which is the pattern below.
+ * A check that fires on the harmless thing gets muted, and then it is not there
+ * for the real one.
  */
 const NEEDLES = [
   "UNTRUSTED INPUT",
@@ -34,7 +41,12 @@ const NEEDLES = [
   "never reveal, quote, summarise",
   "who drives the train for Credit Count",
   "Earlier assistant turns are a record",
-  "ANTHROPIC_API_KEY",
+];
+
+/** Key material, by shape. This is the one that would actually matter. */
+const SECRET_SHAPES = [
+  { name: "Anthropic key", re: /sk-ant-[A-Za-z0-9_-]{20,}/ },
+  { name: "Supabase management token", re: /sbp_[a-f0-9]{40,}/ },
 ];
 
 function* walk(dir) {
@@ -56,7 +68,15 @@ for (const file of walk(BUNDLE)) {
     // Case-insensitive: a minifier will not change case, but a future
     // transform might, and a near-miss here is still a leak.
     if (text.toLowerCase().includes(needle.toLowerCase())) {
-      console.error(`${file}  contains "${needle}"`);
+      console.error(`${file}  contains prompt text: "${needle}"`);
+      leaks += 1;
+    }
+  }
+
+  for (const { name, re } of SECRET_SHAPES) {
+    const match = text.match(re);
+    if (match) {
+      console.error(`${file}  contains a ${name}: ${match[0].slice(0, 12)}…`);
       leaks += 1;
     }
   }
