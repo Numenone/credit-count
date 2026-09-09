@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import type { Emotion } from "@/lib/mascot-shared";
 
 /**
@@ -89,6 +89,18 @@ const MUZZLE = { cx: 150, cy: 158, rx: 41, ry: 30 };
 const LINE = "var(--mascot-line)";
 const STROKE = 4;
 const EASE = "460ms var(--ease-out)";
+
+/**
+ * CSS custom properties, typed.
+ *
+ * React's CSSProperties does not admit `--name` keys, and the usual fix is a
+ * cast with a lint suppression sitting above it. That suppression has to stay
+ * on the line it covers, and it does not survive the object being rewrapped —
+ * which is how one of them ended up two lines away from its cast, suppressing
+ * nothing.
+ */
+const vars = (declarations: Record<`--${string}`, string>): CSSProperties =>
+  declarations as CSSProperties;
 
 /* ------------------------------------------------------------------ rig -- */
 
@@ -514,12 +526,18 @@ export function Mascot({
   const uid = useId().replace(/:/g, "");
   const id = (name: string) => `${uid}-${name}`;
 
-  const motion =
-    face.motion === "bob"
-      ? "rusty-bob 1.1s ease-in-out infinite"
-      : face.motion === "breathe"
-        ? "rusty-breathe 4.2s ease-in-out infinite"
-        : "none";
+  // How far she lifts, and how fast — never *which* animation. Switching
+  // animation-name restarts a CSS animation from frame zero, so choosing a
+  // different one per expression made the whole body snap on every emotion
+  // change, and the "still" setting of `animation: none` snapped it hardest.
+  // Both of these are read mid-flight without restarting the cycle.
+  const idle = {
+    bob: { lift: 5, period: 1.9 },
+    breathe: { lift: 2.4, period: 4.2 },
+    // Braced, not frozen. A character who stops moving entirely reads as a
+    // rendering bug, and stopping is what caused the snap.
+    still: { lift: 0.7, period: 5.6 },
+  }[face.motion];
 
   return (
     <svg
@@ -556,7 +574,13 @@ export function Mascot({
         ))}
       </defs>
 
-      <g style={{ animation: motion, transformOrigin: `150px ${LEDGE_Y}px` }}>
+      <g
+        style={{
+          animation: `rusty-idle ${idle.period}s ease-in-out infinite`,
+          transformOrigin: `150px ${LEDGE_Y}px`,
+          ...vars({ "--rusty-lift": `${idle.lift}px` }),
+        }}
+      >
         {/* ------------------------------------------------------- ears -- */}
         {/* Ears live INSIDE the head's tilt, not beside it. They used to be
             siblings of the head group, so tilting the head left the ears where
@@ -571,6 +595,14 @@ export function Mascot({
             transition: `transform ${EASE}`,
           }}
         >
+          {/* Two groups, not one, and the split is the whole point. The pose
+              and the idle swing both want to write `transform`, and a CSS
+              animation beats a normal declaration on the same property — so
+              while these shared an element the animation simply overwrote
+              `face.ears`, and every expression's ear position was silently
+              discarded except on the ones that set `animation: none`. The
+              outer group owns the pose and transitions into it; the inner one
+              owns the swing. Now they compose instead of competing. */}
           {([-1, 1] as const).map((side) => (
             <g
               key={side}
@@ -578,23 +610,31 @@ export function Mascot({
                 transformOrigin: `${150 + side * 48}px 98px`,
                 transform: `rotate(${side * face.ears}deg)`,
                 transition: `transform ${EASE}`,
-                animation:
-                  face.motion === "still"
-                    ? "none"
-                    : `rusty-ear 4.6s ease-in-out ${side > 0 ? 0.5 : 0}s infinite`,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ...({ "--ear-swing": `${side * 3.5}deg` } as any),
               }}
             >
-              <path
-                d={earPath(side)}
-                fill="var(--mascot-fur-mid)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
-              />
-              <path
-                d={earPath(side)}
-                fill="var(--mascot-fur-dark)" opacity={0.3}
-                style={{ transformOrigin: `${150 + side * 48}px 140px`, transform: "scale(0.86)" }}
-              />
+              <g
+                style={{
+                  transformOrigin: `${150 + side * 48}px 98px`,
+                  // The name and duration are constant, so this never restarts.
+                  // Braced expressions damp the swing to nothing through the
+                  // custom property rather than by stopping the animation,
+                  // which would snap the ear back from wherever it was.
+                  animation: `rusty-ear 4.6s ease-in-out ${side > 0 ? 0.5 : 0}s infinite`,
+                  ...vars({
+                    "--ear-swing": `${face.motion === "still" ? 0 : side * 3.5}deg`,
+                  }),
+                }}
+              >
+                <path
+                  d={earPath(side)}
+                  fill="var(--mascot-fur-mid)" stroke={LINE} strokeWidth={STROKE} strokeLinejoin="round"
+                />
+                <path
+                  d={earPath(side)}
+                  fill="var(--mascot-fur-dark)" opacity={0.3}
+                  style={{ transformOrigin: `${150 + side * 48}px 140px`, transform: "scale(0.86)" }}
+                />
+              </g>
             </g>
           ))}
         </g>

@@ -12,7 +12,10 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // .tsx too: the mascot rig is asserted on the markup it renders, because
+    // an animation and a transition fighting over one property type-checks,
+    // lints clean, and is only visible in the output.
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
   resolve: {
     alias: {
