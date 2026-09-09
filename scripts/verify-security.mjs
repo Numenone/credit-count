@@ -288,6 +288,79 @@ console.log("\nMascot rate limit");
     dayCapped.data === false);
 }
 
+// ------------------------------------------------------ mascot observability --
+// The usage ledger records spend. A user who can read it sees what everyone
+// else asked about; a user who can write it can bury their own spending or
+// invent someone else's.
+console.log("\nMascot observability");
+{
+  const ledger = await a.client.from("mascot_calls").select("*");
+  check(
+    "users cannot read the usage ledger",
+    (ledger.data ?? []).length === 0,
+    ledger.error?.message ?? `${(ledger.data ?? []).length} rows`,
+  );
+
+  const forged = await a.client.from("mascot_calls").insert({
+    user_id: a.userId,
+    gateway: "anthropic",
+    model: "claude-opus-5",
+    outcome: "ok",
+  });
+  check("users cannot write to the ledger", forged.error != null, forged.error?.message);
+
+  const erase = await a.client.from("mascot_calls").delete({ count: "exact" }).gte("input_tokens", 0);
+  check(
+    "users cannot erase ledger rows",
+    erase.error != null || (erase.count ?? 0) === 0,
+    erase.error?.message ?? `${erase.count} rows deleted`,
+  );
+
+  // The rollups are SECURITY DEFINER, so they bypass the table's policy on
+  // purpose. Their own admin check is therefore the only thing standing there.
+  const series = await a.client.rpc("mascot_usage_series", { p_bucket: "day", p_hours: 24 });
+  check("users cannot call the usage rollup", series.error != null, series.error?.message);
+
+  const emotions = await a.client.rpc("mascot_emotion_counts", { p_hours: 24 });
+  check("users cannot call the emotion rollup", emotions.error != null, emotions.error?.message);
+
+  // Config is readable by design — the endpoint runs as the caller and has to
+  // know which model to use — but writable only through the function.
+  const config = await a.client.from("mascot_config").select("model, gateway");
+  check("users CAN read the mascot config", (config.data ?? []).length === 1, config.error?.message);
+
+  const direct = await a.client
+    .from("mascot_config")
+    .update({ model: "claude-haiku-4-5" }, { count: "exact" })
+    .eq("id", true);
+  check(
+    "users cannot change the config directly",
+    direct.error != null || (direct.count ?? 0) === 0,
+    direct.error?.message ?? `${direct.count} rows updated`,
+  );
+
+  const viaFunction = await a.client.rpc("set_mascot_config", {
+    p_gateway: "anthropic",
+    p_model: "claude-haiku-4-5",
+    p_max_tokens: 4000,
+    p_effort: "high",
+    p_burst_cap: 100,
+    p_daily_cap: 5000,
+  });
+  check(
+    "users cannot change the config through the function either",
+    viaFunction.error != null,
+    viaFunction.error?.message,
+  );
+
+  const unchanged = await a.client.from("mascot_config").select("model").maybeSingle();
+  check(
+    "the model is still what an admin set",
+    unchanged.data?.model !== "claude-haiku-4-5",
+    `model is ${unchanged.data?.model}`,
+  );
+}
+
 async function anyCoasterId(client) {
   const { data } = await client.from("coasters").select("id").limit(1).single();
   return data?.id ?? null;

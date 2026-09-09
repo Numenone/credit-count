@@ -89,8 +89,8 @@ if (KNOWN_EMOTIONS.size < 2) {
   process.exit(1);
 }
 
-const ADMIN_PAGES = ["/admin", "/admin/catalogue", "/admin/api"];
-const ADMIN_MARKERS = /API explorer|Catalogue &amp; system|Add a coaster|Possible duplicates/;
+const ADMIN_PAGES = ["/admin", "/admin/catalogue", "/admin/api", "/admin/llm"];
+const ADMIN_MARKERS = /API explorer|Catalogue &amp; system|Add a coaster|Possible duplicates|Rusty&#x27;s usage|Model and limits/;
 
 console.log(`\nCredit Count — HTTP authorisation checks against ${APP}\n`);
 
@@ -470,6 +470,41 @@ console.log("\nMascot");
   } else {
     console.log("  [SKIP] live mascot probes — set E2E_MASCOT_LIVE=1 to spend tokens on them");
   }
+}
+
+/* --------------------------------------------------------- llm dashboard -- */
+// The usage console is the one admin page that renders money. Two things have
+// to hold: an enthusiast never sees it, and an admin sees real figures rather
+// than an error swallowed into an empty state.
+if (process.env.E2E_ADMIN_EMAIL && process.env.E2E_ADMIN_PASSWORD) {
+  console.log("\nLLM dashboard");
+  const admin = await cookieFor(process.env.E2E_ADMIN_EMAIL, process.env.E2E_ADMIN_PASSWORD);
+
+  for (const period of ["minute", "hour", "day", "week", "month", "year"]) {
+    const r = await request(`/admin/llm?period=${period}`, { cookie: admin });
+    check(`?period=${period} renders`, r.status === 200, String(r.status));
+    // A rollup that raised would leave the page rendering its empty state,
+    // which looks identical to "no traffic". Assert the console is really there.
+    check(`?period=${period} shows the console`, /Model and limits/.test(r.text));
+    // A server component that throws still answers 200 with the error
+    // boundary, so the status alone proves nothing. React serialises the
+    // failure as a digest; its presence is the tell.
+    check(`?period=${period} rendered without a server error`, !/\d+:E\{"digest"/.test(r.text));
+  }
+
+  // An unknown period must fall back rather than 500.
+  const nonsense = await request("/admin/llm?period=fortnight", { cookie: admin });
+  check("an unknown period falls back", nonsense.status === 200, String(nonsense.status));
+
+  const asUser = await request("/admin/llm", { cookie: enthusiast });
+  check(
+    "an enthusiast is redirected away from the console",
+    asUser.status >= 300 && asUser.status < 400 && !(asUser.location ?? "").startsWith("/admin"),
+    `${asUser.status}${asUser.location ? ` → ${new URL(asUser.location, APP).pathname}` : ""}`,
+  );
+  check("and sees none of its markup", !ADMIN_MARKERS.test(asUser.text));
+} else {
+  console.log("\nLLM dashboard — skipped (set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD)");
 }
 
 /* ----------------------------------------------------------------- headers -- */

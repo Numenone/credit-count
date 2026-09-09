@@ -237,26 +237,16 @@ export default async function LlmPage({ searchParams }: PageProps<"/admin/llm">)
         </section>
       ) : (
         <Reveal className="grid gap-4 lg:grid-cols-2">
-          <LlmUsageChart
-            title="Spend"
-            subtitle={spec.label}
-            points={points}
-            measure={(p) => p.costUsd}
-            format={formatUsd}
-          />
-          <LlmUsageChart
-            title="Calls"
-            subtitle={spec.label}
-            points={points}
-            measure={(p) => p.calls}
-            format={(v) => `${v.toLocaleString("en-GB")}`}
-          />
+          {/* `metric` is a string, not a function. Functions do not cross the
+              RSC boundary — passing `measure` and `format` here failed at
+              serialisation with a digest and no stack. */}
+          <LlmUsageChart title="Spend" subtitle={spec.label} points={points} metric="cost" />
+          <LlmUsageChart title="Calls" subtitle={spec.label} points={points} metric="calls" />
           <LlmUsageChart
             title="Tokens out"
             subtitle="What she said, which is the expensive half"
             points={points}
-            measure={(p) => p.outputTokens}
-            format={(v) => v.toLocaleString("en-GB")}
+            metric="outputTokens"
           />
           <BarList
             title="Expressions returned"
