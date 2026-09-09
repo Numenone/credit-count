@@ -188,27 +188,27 @@ const CSS = `
   --ink: #14140f; --ink-2: #43423c; --ink-3: #6f6d66;
   --line: #e0ddd5; --brand: #b8391b; --surface-2: #faf9f6;
 }
-@page { size: A4; margin: 15mm 15mm 14mm; }
+@page { size: A4; margin: 12mm 14mm 11mm; }
 
 * { box-sizing: border-box; }
 body {
   margin: 0; color: var(--ink); background: #fff;
-  font: 9.8pt/1.45 "Segoe UI", -apple-system, system-ui, sans-serif;
+  font: 9.7pt/1.40 "Segoe UI", -apple-system, system-ui, sans-serif;
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
 
 h1 {
-  font-size: 20pt; line-height: 1.15; letter-spacing: -0.02em;
+  font-size: 17pt; line-height: 1.15; letter-spacing: -0.02em;
   margin: 0 0 4pt; font-weight: 650;
 }
 h1 + p { color: var(--ink-2); margin-top: 0; }
 h2 {
-  font-size: 12.5pt; letter-spacing: -0.01em; margin: 15pt 0 6pt;
+  font-size: 12.5pt; letter-spacing: -0.01em; margin: 12pt 0 5pt;
   padding-bottom: 4pt; border-bottom: 1px solid var(--line); font-weight: 640;
   break-after: avoid;
 }
 
-p { margin: 0 0 6pt; }
+p { margin: 0 0 5.5pt; }
 strong { font-weight: 650; }
 
 /* The rules in the source separate sections whose headings are already ruled,
@@ -233,10 +233,17 @@ blockquote {
 }
 blockquote p { margin: 0; }
 
+/* A table that refuses to break moves wholesale to the next page when it
+   does not fit, and the gap it leaves behind is what turned a three-page
+   document into four: pages two and three were running about 60% full.
+   Rows are what must not split; the table itself may, and a header group
+   repeats so a continued table keeps its column labels. */
 table {
   width: 100%; border-collapse: collapse; margin: 6pt 0 9pt;
-  font-size: 9pt; break-inside: avoid;
+  font-size: 9pt; break-inside: auto;
 }
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
 th, td {
   text-align: left; vertical-align: top; padding: 4.5pt 7pt;
   border-bottom: 1px solid var(--line);
