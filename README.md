@@ -6,8 +6,9 @@ coaster catalogue, watch their credit count and stats, and can opt in to a publi
 > A **credit** is a unique coaster ridden at least once. Riding the same coaster again increases the
 > ride total, never the credit count. The app tracks both.
 
-Built for the Koin Limited AI Product Engineer task from the accompanying Statement of Work. See
-[`docs/TDD.md`](docs/TDD.md) for the technical design.
+Built for the Koin Limited AI Product Engineer task from the accompanying Statement of Work. The
+technical design document is supplied to the reviewer directly rather than published here, because
+it carries the test-account credentials.
 
 ## Live app
 
@@ -101,12 +102,12 @@ src/lib/api-spec.ts      endpoint descriptions the explorer renders
 src/proxy.ts             session refresh + route gating (Next 16 renamed middleware to proxy)
 supabase/migrations/     schema, RLS policies, leaderboard view, catalogue seed
 scripts/                 database-level security verification
-docs/TDD.md              technical design document
 ```
 
 ## Beyond the SOW
 
-The brief asked for a credit tracker. These went in on top, and each is flagged in the TDD:
+The brief asked for a credit tracker. These went in on top, and each is flagged in the design
+document:
 
 | Feature | Why |
 | --- | --- |
