@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { verifiedClaims } from "@/lib/supabase/claims";
 import type { Device } from "@/lib/devices";
 import { SettingsForm } from "./settings-form";
 import { Devices } from "./devices";
@@ -33,14 +32,12 @@ async function signOutDevice(sessionId: string) {
 }
 
 export default async function SettingsPage() {
-  const { user, profile } = await requireUser();
+  const session = await requireUser();
+  const { user, profile, sessionId } = session;
   const supabase = await createClient();
 
-  const [claims, devicesResult] = await Promise.all([
-    verifiedClaims(supabase),
-    supabase.rpc("my_devices"),
-  ]);
-  const devices = (devicesResult.data ?? []) as Device[];
+  const { data } = await supabase.rpc("my_devices");
+  const devices = (data ?? []) as Device[];
 
   return (
     <div className="rise mx-auto max-w-xl space-y-6">
@@ -58,7 +55,7 @@ export default async function SettingsPage() {
 
       <Devices
         devices={devices}
-        currentSessionId={claims?.sessionId ?? null}
+        currentSessionId={sessionId ?? null}
         action={signOutDevice}
       />
 

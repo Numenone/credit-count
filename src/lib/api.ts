@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { verifiedClaims } from "@/lib/supabase/claims";
-import type { Profile } from "@/lib/database.types";
+import { resolveSession } from "@/lib/session";
 
 /**
  * Shared plumbing for the /api/v1 route handlers.
@@ -41,24 +40,31 @@ export function fromPostgrest(error: PostgrestError) {
   return apiError("Bad request", 400, error.message);
 }
 
+/**
+ * The caller's client and identity.
+ *
+ * Goes through resolveSession() — the same path the pages use — rather than
+ * verifying claims on its own. Having its own, simpler path was a real bug:
+ * the revocation check lived in the page helper, so signing a device out took
+ * effect on pages and did nothing here, and a revoked session could still read
+ * every endpoint until its token expired.
+ */
 export async function getAuthedClient() {
   const supabase = await createClient();
-  // Verified against the project's public keys rather than by a round trip to
-  // Supabase Auth. See supabase/claims.ts — this was the single largest cost in
-  // every authenticated request.
-  const claims = await verifiedClaims(supabase);
-  return { supabase, user: claims ? { id: claims.sub, email: claims.email } : null };
+  const session = await resolveSession();
+  return { supabase, user: session?.user ?? null };
 }
 
+/**
+ * The same, plus the profile — which resolveSession() already fetched, so this
+ * costs nothing beyond it. It used to make a second query for a row it had just
+ * been handed.
+ */
 export async function requireProfile() {
-  const { supabase, user } = await getAuthedClient();
-  if (!user) return { supabase, user: null, profile: null };
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single<Profile>();
-  return { supabase, user, profile };
+  const supabase = await createClient();
+  const session = await resolveSession();
+  if (!session) return { supabase, user: null, profile: null };
+  return { supabase, user: session.user, profile: session.profile };
 }
 
 export const unauthorised = () =>
