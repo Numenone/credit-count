@@ -649,34 +649,19 @@ body {
   87%             { transform: scaleY(0); }
 }
 
-/* He is alive even when idle: a slow breath, and a faster bob when delighted. */
-/* One idle animation for every expression, and its name never changes.
+/* There is no idle animation on the body, and the absence is deliberate.
 
-   There were two, rusty-breathe and rusty-bob, picked per emotion, plus a third
-   setting of `animation: none`. Changing animation-name restarts a CSS
-   animation from frame zero, so every emotion that crossed between them made
-   the whole body snap from wherever the old cycle had left it to the new one's
-   rest pose, and `none` snapped it harder still. Amplitude now rides on a
-   custom property and speed on the duration. Neither restarts anything, so the
-   body keeps breathing through an expression change instead of jumping.
+   It went through three shapes. Two named animations swapped per expression,
+   which restarted the cycle from frame zero on every change and made her
+   snap. Then one that translated, which pushed her hem through the card's
+   clip line and back — material appearing and disappearing at an edge, read
+   as the drawing resizing. Then one that scaled from the hem, which pinned
+   that edge and was still wrong to look at.
 
-   It scales from the base and never translates, which is what breathing is.
-   Translating was the second attempt and it was worse than it looked in
-   isolation: she is a bust cropped at the bottom, her base sits exactly on the
-   card's clip line, so sliding her down pushed her hem out of the crop and
-   sliding her back brought it in again. Material appearing and disappearing at
-   an edge does not read as breathing, it reads as the drawing changing size.
-   Scaling about `150px 300px` pins the hem to that line — nothing ever crosses
-   it — while the head still rises and falls.
-
-   And no rotation. It used to rotate 1.2deg about the same point, 176 units
-   below the head; that far from the pivot a small angle becomes visible
-   sideways travel at the top of the drawing, so she appeared to sway. Character
-   comes from the head tilt and the ears, posed per expression. */
-@keyframes rusty-idle {
-  0%, 100% { transform: scale(1, 1); }
-  50%      { transform: scale(var(--rusty-swell, 1.004), var(--rusty-rise, 1.008)); }
-}
+   The common cause is the pose. She is a bust cropped at the bottom, so
+   almost anything applied to the whole figure shows at the crop. Life comes
+   from the blink, the ear swing and the expression transitions instead:
+   those move parts of her, and a part has no edge to betray it. */
 
 /* Ears are soft, so they lag behind the head rather than moving with it. */
 @keyframes rusty-ear {

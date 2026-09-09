@@ -143,7 +143,11 @@ interface Face {
   tilt: number;
   /** Whether she blinks. A startled character holds her eyes open. */
   blink: boolean;
-  /** Idle motion: "breathe" is resting, "bob" excited, "still" braced. */
+  /**
+   * How alert she is, which now only damps the ear swing: "still" holds them,
+   * the other two let them move. It used to drive an idle animation on the
+   * whole body as well, and that is gone — see the comment on the body group.
+   */
   motion: "breathe" | "bob" | "still";
   prop?: Prop;
   /** Closes one eye. -1 is her right, +1 her left. */
@@ -526,27 +530,6 @@ export function Mascot({
   const uid = useId().replace(/:/g, "");
   const id = (name: string) => `${uid}-${name}`;
 
-  // How far she lifts, and how fast — never *which* animation. Switching
-  // animation-name restarts a CSS animation from frame zero, so choosing a
-  // different one per expression made the whole body snap on every emotion
-  // change, and the "still" setting of `animation: none` snapped it hardest.
-  // Both of these are read mid-flight without restarting the cycle.
-  // `rise` lifts the head by scaling the body up from its hem, `swell` widens
-  // the chest. Never a translation: she is cropped at the bottom and her hem
-  // sits on the clip line, so sliding her pushes the hem through it and back,
-  // which reads as the drawing resizing rather than as breathing. Scaling from
-  // that same line keeps the hem exactly where it is.
-  //
-  // The head sits about 176 units above the pivot, so `rise` of 1.008 moves it
-  // roughly 1.4 units — under a pixel and a half at the size she is drawn.
-  const idle = {
-    bob: { rise: 1.02, swell: 1.008, period: 1.9 },
-    breathe: { rise: 1.008, swell: 1.004, period: 4.2 },
-    // Braced, not frozen. A character who stops moving entirely reads as a
-    // rendering bug, and stopping outright is what caused the earlier snap.
-    still: { rise: 1.003, swell: 1.001, period: 5.6 },
-  }[face.motion];
-
   return (
     <svg
       className={className}
@@ -582,16 +565,14 @@ export function Mascot({
         ))}
       </defs>
 
-      <g
-        style={{
-          animation: `rusty-idle ${idle.period}s ease-in-out infinite`,
-          transformOrigin: `150px ${LEDGE_Y}px`,
-          ...vars({
-            "--rusty-rise": `${idle.rise}`,
-            "--rusty-swell": `${idle.swell}`,
-          }),
-        }}
-      >
+      {/* The body does not move. It carried an idle animation through three
+          shapes — two named animations swapped per expression, then one that
+          translated, then one that scaled from the hem — and each read as a
+          fault rather than as life, because she is a bust cropped at the
+          bottom and almost anything done to the whole figure shows at that
+          edge. Life comes from the blink, the ears and the expression
+          transitions instead, which move parts rather than the whole. */}
+      <g>
         {/* ------------------------------------------------------- ears -- */}
         {/* Ears live INSIDE the head's tilt, not beside it. They used to be
             siblings of the head group, so tilting the head left the ears where
