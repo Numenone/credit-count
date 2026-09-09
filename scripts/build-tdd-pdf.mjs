@@ -208,7 +208,11 @@ h2 {
   break-after: avoid;
 }
 
-p { margin: 0 0 5.5pt; }
+/* Chromium's default widow control holds two lines back, which pushed a
+   single trailing line onto a fourth page while the third still had room
+   for it. One line alone at the top of a page is worth avoiding; one line
+   alone on a page of its own is not. */
+p { margin: 0 0 5.5pt; orphans: 1; widows: 1; }
 strong { font-weight: 650; }
 
 /* The rules in the source separate sections whose headings are already ruled,
