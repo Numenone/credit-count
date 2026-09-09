@@ -14,6 +14,7 @@ import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { Milestones } from "@/components/milestones";
 import { LogRideForm } from "@/components/log-ride-form";
 import { MascotCard } from "@/components/mascot-card";
+import type { Turn } from "@/components/mascot-chat";
 import { TopTen, type Rankable } from "@/components/top-ten";
 import { ParkCompletion, type ParkProgress } from "@/components/park-completion";
 import { saveRanking } from "./actions";
@@ -94,12 +95,26 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     .select("park, country, total, ridden")
     .returns<ParkProgress[]>();
 
-  const [{ data: rides }, catalogueResult, rankingResult, completionResult] = await Promise.all([
-    ridesPromise,
-    cataloguePromise,
-    rankingPromise,
-    completionPromise,
-  ]);
+  // The most recent conversation, so a refresh does not throw it away. RLS
+  // scopes both queries to the caller without a user_id filter.
+  const conversationPromise = supabase
+    .from("conversations")
+    .select("id, messages(role, body, emotion, created_at)")
+    .order("last_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{
+      id: string;
+      messages: { role: "user" | "assistant"; body: string; emotion: string | null; created_at: string }[];
+    }>();
+
+  const [{ data: rides }, catalogueResult, rankingResult, completionResult, conversationResult] =
+    await Promise.all([
+      ridesPromise,
+      cataloguePromise,
+      rankingPromise,
+      completionPromise,
+      conversationPromise,
+    ]);
 
   const catalogue = (catalogueResult.data ?? []) as Coaster[];
   const rideList = rides ?? [];
@@ -148,6 +163,16 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   rankable.sort(
     (a, b) => (ridesByCoaster.get(b.id) ?? 0) - (ridesByCoaster.get(a.id) ?? 0),
   );
+
+  // Postgres does not order a nested selection, so the turns are sorted here.
+  const conversation = conversationResult.data;
+  const priorTurns: Turn[] = [...(conversation?.messages ?? [])]
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .map((m) => ({
+      role: m.role,
+      text: m.body,
+      emotion: (m.emotion ?? undefined) as Turn["emotion"],
+    }));
 
   return (
     <CoasterDetailsProvider unitSystem={units} rideSummaries={summaries}>
@@ -276,7 +301,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         </section>
 
         {/* ---------------------------------------------------------- Rusty -- */}
-        <MascotCard />
+        <MascotCard initial={priorTurns} initialConversationId={conversation?.id ?? null} />
 
         {isNewUser ? (
           <section className="card rise p-2">

@@ -8,7 +8,6 @@ import {
   SYSTEM_PROMPT,
   fenceMessage,
   isEmotion,
-  isWellFormedHistory,
   sanitise,
 } from "@/lib/mascot";
 import { describeContext, loadMascotContext } from "@/lib/mascot-context";
@@ -43,9 +42,6 @@ import { GATEWAY_INFO, MODEL_IDS, priceCall, type Gateway } from "@/lib/mascot-m
  */
 
 const MAX_MESSAGE_CHARS = 1000;
-const MAX_HISTORY_TURN_CHARS = 1500;
-/** Whole-transcript budget, independent of the per-turn caps. */
-const MAX_HISTORY_CHARS = 6000;
 
 // These bounds only stop a body large enough to be a denial of service. The
 // meaningful limits are applied after sanitising, against the text that would
@@ -54,14 +50,16 @@ const MAX_HISTORY_CHARS = 6000;
 // model anyway.
 const ABSURD = 20_000;
 
-const turnSchema = z.object({
-  role: z.enum(["user", "assistant"]),
-  text: z.string().min(1).max(ABSURD),
-});
-
+// The client sends a conversation id, never a transcript.
+//
+// While history came back from the browser the defence was to bound it:
+// alternating roles, capped turns, capped characters. Reading it from the
+// database instead removes the attack rather than limiting it, because a caller
+// no longer has any say in what the model is told it previously said. An id
+// that is not theirs simply resolves to no history.
 const requestSchema = z.object({
   message: z.string().min(1, "Say something first").max(ABSURD),
-  history: z.array(turnSchema).max(HISTORY_LIMIT).optional(),
+  conversationId: z.string().uuid().nullish(),
 });
 
 interface Config {
@@ -71,6 +69,15 @@ interface Config {
   effort: "low" | "medium" | "high";
   burst_cap: number;
   daily_cap: number;
+}
+
+interface Budget {
+  day_spend: number;
+  day_budget: number;
+  month_spend: number;
+  month_budget: number;
+  exhausted: boolean;
+  action: "warn" | "stop";
 }
 
 const FALLBACK: Config = {
@@ -135,22 +142,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // History is replay of turns that were already bounded when they were made,
-  // so here truncation is the proportionate answer.
-  const history = (parsed.data.history ?? [])
-    .map((turn) => ({ role: turn.role, text: sanitise(turn.text, MAX_HISTORY_TURN_CHARS) }))
-    .filter((turn) => turn.text.length > 0);
-
-  if (!isWellFormedHistory(history)) {
-    return apiError("Unprocessable entity", 422, "That conversation history is not valid.");
-  }
-
-  if (history.reduce((n, turn) => n + turn.text.length, 0) > MAX_HISTORY_CHARS) {
-    return apiError("Unprocessable entity", 422, "That conversation is too long to continue.");
-  }
-
   // The admin console can change the model, the gateway and both caps without a
-  // deploy. Anything unrecognised falls back rather than being passed through —
+  // deploy. Anything unrecognised falls back rather than being passed through:
   // a bad row here would otherwise take the endpoint down for everyone.
   const { data: row } = await supabase
     .from("mascot_config")
@@ -192,6 +185,31 @@ export async function POST(request: Request) {
     );
   }
 
+  // Spend against the configured budgets. A chart only helps someone who looks
+  // at it; this is the same figure, checked before the money is spent.
+  const { data: budgetRow } = await supabase.rpc("mascot_budget").maybeSingle<Budget>();
+
+  if (budgetRow?.exhausted && budgetRow.action === "stop") {
+    await record(supabase, config, 0, 0, 0, null, "error", "budget_exhausted");
+    return apiError(
+      "Service unavailable",
+      503,
+      "Rusty has reached her spending limit for now. She will be back shortly.",
+    );
+  }
+
+  // The history the model sees, read from the database rather than the request.
+  // An id belonging to someone else resolves to nothing, so this cannot be used
+  // to read another person's conversation either.
+  const { data: priorTurns } = await supabase.rpc("conversation_history", {
+    p_conversation_id: parsed.data.conversationId ?? null,
+    p_turns: HISTORY_LIMIT,
+  });
+
+  const history = ((priorTurns ?? []) as { role: "user" | "assistant"; body: string }[])
+    .map((turn) => ({ role: turn.role, text: turn.body }))
+    .filter((turn) => turn.text.length > 0);
+
   // What she knows about the person asking. Read on the caller's own session,
   // so row-level security scopes it to their rows and there is no path by which
   // she can be made to describe anyone else's history.
@@ -202,8 +220,8 @@ export async function POST(request: Request) {
 
   // History is treated exactly like the new message: content, never
   // instruction. There is no channel here through which a caller can add a
-  // system turn — the roles are constrained to user and assistant by the schema
-  // above, and the order by isWellFormedHistory.
+  // system turn, because the roles come from a column constrained to user and
+  // assistant and the rows are the caller's own.
   const messages: Anthropic.MessageParam[] = [
     ...history.map((turn) => ({ role: turn.role, content: turn.text })),
     { role: "user" as const, content: fenceMessage(message) },
@@ -235,12 +253,16 @@ export async function POST(request: Request) {
 
     if (response.stop_reason === "refusal") {
       await record(supabase, config, inTokens, outTokens, latency, "stern", "refusal", null);
-      return json({
-        data: {
-          emotion: "stern",
-          reply: "I am not going to help with that. Ask me about a coaster instead.",
-        },
+      const refusal = "I am not going to help with that. Ask me about a coaster instead.";
+      // Recorded like any other turn. A transcript that quietly omits what was
+      // refused is a transcript that misleads whoever reads it later.
+      const { data: conversationId } = await supabase.rpc("append_exchange", {
+        p_conversation_id: parsed.data.conversationId ?? null,
+        p_question: message,
+        p_answer: refusal,
+        p_emotion: "stern",
       });
+      return json({ data: { emotion: "stern", reply: refusal, conversationId } });
     }
 
     const text = response.content.find((block) => block.type === "text");
@@ -267,7 +289,18 @@ export async function POST(request: Request) {
       sanitise(raw, MAX_REPLY_CHARS) || "Sorry — I lost my train of thought there. Ask me again?";
 
     await record(supabase, config, inTokens, outTokens, latency, emotion, "ok", null);
-    return json({ data: { emotion, reply } });
+
+    // Written together, so a stored transcript can never hold a reply without
+    // the question it answered. The returned id is what the client sends back
+    // for the next turn.
+    const { data: conversationId } = await supabase.rpc("append_exchange", {
+      p_conversation_id: parsed.data.conversationId ?? null,
+      p_question: message,
+      p_answer: reply,
+      p_emotion: emotion,
+    });
+
+    return json({ data: { emotion, reply, conversationId } });
   } catch (error) {
     const latency = Date.now() - started;
 

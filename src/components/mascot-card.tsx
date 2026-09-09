@@ -4,7 +4,6 @@ import { useCallback, useRef, useState } from "react";
 import { Mascot } from "@/components/mascot";
 import { MascotChat, type Turn } from "@/components/mascot-chat";
 import type { Emotion } from "@/lib/mascot-shared";
-import { HISTORY_LIMIT } from "@/lib/mascot-shared";
 import { ArrowRightIcon, SparkIcon } from "@/components/icons";
 
 /**
@@ -17,24 +16,40 @@ import { ArrowRightIcon, SparkIcon } from "@/components/icons";
  *
  * This component owns the conversation. The card and the modal are two views of
  * the same state, so asking from the card and asking from the modal are the same
- * action — the card's box just happens to be the first turn.
+ * action; the card's box just happens to be the first turn.
+ *
+ * The transcript itself lives in the database. What arrives here is the last
+ * conversation, rendered on the server, so a refresh no longer throws it away
+ * and the model's history is never something the browser supplies.
  */
-export function MascotCard() {
+export function MascotCard({
+  initial = [],
+  initialConversationId = null,
+}: {
+  /** The most recent conversation, loaded on the server. */
+  initial?: Turn[];
+  initialConversationId?: string | null;
+}) {
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(false);
-  const [turns, setTurns] = useState<Turn[]>([]);
+  const [turns, setTurns] = useState<Turn[]>(initial);
   const [emotion, setEmotion] = useState<Emotion>("idle");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // The transcript is mirrored in a ref so `send` can read the current history
-  // without being re-created on every turn. Deriving it inside a state updater
-  // would make that updater impure, which React is free to run twice.
-  const transcript = useRef<Turn[]>([]);
+  // The transcript is mirrored in a ref so `send` can append without being
+  // re-created on every turn. Deriving it inside a state updater would make
+  // that updater impure, which React is free to run twice.
+  const transcript = useRef<Turn[]>(initial);
   const append = useCallback((turn: Turn) => {
     transcript.current = [...transcript.current, turn];
     setTurns(transcript.current);
   }, []);
+
+  // Which conversation this is. The server owns the history now, so this id is
+  // all the client has to carry, and an id that is not the caller's simply
+  // resolves to no history on the other side.
+  const conversationId = useRef<string | null>(initialConversationId);
 
   const send = useCallback(
     async (message: string) => {
@@ -42,22 +57,17 @@ export function MascotCard() {
       setPending(true);
       setEmotion("thinking");
 
-      // What came before this message — the new one is sent separately.
-      const history = transcript.current.slice(-HISTORY_LIMIT);
       append({ role: "user", text: message });
 
       try {
         const response = await fetch("/api/v1/mascot", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message,
-            history: history.map((turn) => ({ role: turn.role, text: turn.text })),
-          }),
+          body: JSON.stringify({ message, conversationId: conversationId.current }),
         });
 
         const payload = (await response.json()) as {
-          data?: { emotion?: Emotion; reply?: string };
+          data?: { emotion?: Emotion; reply?: string; conversationId?: string };
           error?: { message?: string; detail?: string };
         };
 
@@ -73,6 +83,7 @@ export function MascotCard() {
 
         const reply = payload.data.reply ?? "";
         const next = payload.data.emotion ?? "happy";
+        if (payload.data.conversationId) conversationId.current = payload.data.conversationId;
         setEmotion(next);
         append({ role: "assistant", text: reply, emotion: next });
       } catch {

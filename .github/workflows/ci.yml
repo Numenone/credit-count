@@ -48,7 +48,10 @@ jobs:
       - name: No prompt or key material in the client bundle
         run: node scripts/scan-prompt-leak.mjs
 
-  secrets:
+  # Not "secrets": that is a reserved context name in Actions, and a job called
+  # one makes the whole workflow fail to start. Every run since this file was
+  # added reported startup_failure and ran nothing.
+  credential-scan:
     name: Credential scan
     runs-on: ubuntu-latest
     steps:
