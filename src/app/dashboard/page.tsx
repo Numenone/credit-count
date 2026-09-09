@@ -14,6 +14,9 @@ import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { Milestones } from "@/components/milestones";
 import { LogRideForm } from "@/components/log-ride-form";
 import { MascotCard } from "@/components/mascot-card";
+import { TopTen, type Rankable } from "@/components/top-ten";
+import { ParkCompletion, type ParkProgress } from "@/components/park-completion";
+import { saveRanking } from "./actions";
 import { EmptyState } from "@/components/empty-state";
 import { Reveal } from "@/components/reveal";
 import {
@@ -78,9 +81,24 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         .order("name")
         .limit(5);
 
-  const [{ data: rides }, catalogueResult] = await Promise.all([
+  // Ordered by position so the list arrives ready to render; the join carries
+  // the coaster so the client component needs no second lookup.
+  const rankingPromise = supabase
+    .from("rankings")
+    .select("position, coaster:coasters(id, name, park, country)")
+    .order("position")
+    .returns<{ position: number; coaster: Rankable | null }[]>();
+
+  const completionPromise = supabase
+    .from("park_completion")
+    .select("park, country, total, ridden")
+    .returns<ParkProgress[]>();
+
+  const [{ data: rides }, catalogueResult, rankingResult, completionResult] = await Promise.all([
     ridesPromise,
     cataloguePromise,
+    rankingPromise,
+    completionPromise,
   ]);
 
   const catalogue = (catalogueResult.data ?? []) as Coaster[];
@@ -107,6 +125,29 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     summary.first = ride.ridden_on;
     if (ride.note && summary.notes.length < 3) summary.notes.push(ride.note);
   }
+
+  const ranked = (rankingResult.data ?? [])
+    .map((row) => row.coaster)
+    .filter((coaster): coaster is Rankable => coaster != null);
+
+  // Everything ridden, deduplicated, as candidates for the ranking. Ordered by
+  // how often it was ridden, since that is the most likely thing to rank.
+  const rankable: Rankable[] = [];
+  const seen = new Set<string>();
+  for (const ride of rideList) {
+    const coaster = ride.coaster;
+    if (!coaster || seen.has(coaster.id)) continue;
+    seen.add(coaster.id);
+    rankable.push({
+      id: coaster.id,
+      name: coaster.name,
+      park: coaster.park,
+      country: coaster.country,
+    });
+  }
+  rankable.sort(
+    (a, b) => (ridesByCoaster.get(b.id) ?? 0) - (ridesByCoaster.get(a.id) ?? 0),
+  );
 
   return (
     <CoasterDetailsProvider unitSystem={units} rideSummaries={summaries}>
@@ -328,6 +369,12 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 />
               </div>
               <TypeSplit items={stats.byType} />
+            </Reveal>
+
+            {/* ------------------------------- ranking + park completion -- */}
+            <Reveal className="grid gap-4 lg:grid-cols-2">
+              <TopTen initial={ranked} candidates={rankable} action={saveRanking} />
+              <ParkCompletion parks={completionResult.data ?? []} />
             </Reveal>
 
             {/* ----------------------------------- milestones + top coasters -- */}
