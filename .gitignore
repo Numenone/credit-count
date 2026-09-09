@@ -40,3 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+
+# The design document is delivered to the reviewer directly, not published.
+# It carries the test-account credentials, and a public repository is the wrong
+# place for those — this is the second half of rotating them.
+docs/
