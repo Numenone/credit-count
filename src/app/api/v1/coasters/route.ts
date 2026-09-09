@@ -26,8 +26,9 @@ const coasterInput = z.object({
   longitude: z.number().min(-180).max(180).nullish(),
 });
 
+/** Bound parameter downstream, so this only caps the length. */
 function sanitise(raw: string) {
-  return raw.replace(/[(),*]/g, " ").replace(/[%_\\]/g, "").trim().slice(0, 60);
+  return raw.trim().slice(0, 60);
 }
 
 /** GET /api/v1/coasters — the shared catalogue. Any signed-in user may read it. */
@@ -42,8 +43,30 @@ export async function GET(request: Request) {
   const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? 50) || 50));
   const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0);
 
+  // Free-text search runs through search_coasters(), which binds the term rather
+  // than interpolating it. country and type are exact-match filters, passed as
+  // values by supabase-js, so neither is a string-building surface either.
+  if (q) {
+    // No .returns<Coaster[]>() here: supabase-js types rpc() as returning a
+    // single value and rejects an array cast, so the shape is asserted after.
+    const { data, error } = await supabase.rpc("search_coasters", {
+      term: q,
+      max_results: 200,
+    });
+
+    if (error) return fromPostgrest(error);
+
+    const rows = (data ?? []) as Coaster[];
+    const filtered = rows.filter(
+      (c) => (!country || c.country === country) && (!type || c.type === type),
+    );
+    return json({
+      data: filtered.slice(offset, offset + limit),
+      meta: { total: filtered.length, limit, offset },
+    });
+  }
+
   let query = supabase.from("coasters").select(COASTER_COLUMNS, { count: "exact" });
-  if (q) query = query.or(`name.ilike.%${q}%,park.ilike.%${q}%,country.ilike.%${q}%`);
   if (country) query = query.eq("country", country);
   if (type) query = query.eq("type", type);
 

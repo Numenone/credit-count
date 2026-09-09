@@ -68,9 +68,17 @@ update public.profiles set role = 'admin' where id = (
 
 ## Verifying the security model
 
+Two suites, run against the live system:
+
 ```bash
-node --env-file=.env.local scripts/verify-security.mjs
+node --env-file=.env.local scripts/verify-security.mjs       # 23 checks, database layer
+node --env-file=.env.local scripts/verify-http-security.mjs  # 44 checks, deployed app over HTTP
 ```
+
+The HTTP suite signs each role in for real and encodes the session into the
+cookie the app expects, so its requests are indistinguishable from that user
+driving a browser. It covers admin page gating, API authorisation, cross-user
+access, hostile query strings, and response headers.
 
 Requires two enthusiast accounts and, optionally, an admin account, set in `.env.local`.
 

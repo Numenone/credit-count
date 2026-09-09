@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Geist } from "next/font/google";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
@@ -29,7 +30,11 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Set by the proxy, one value per request. Without it the inline script below
+  // would be blocked by our own Content-Security-Policy — which is the point.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="en" className={`${geist.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="flex min-h-full flex-col font-sans">
@@ -44,7 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           page rendered dark because the attribute the stylesheet reads was
           never set.
         */}
-        <script dangerouslySetInnerHTML={{ __html: themeScript + motionScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript + motionScript }} />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-[var(--surface)] focus:px-3 focus:py-2 focus:text-sm focus:shadow-lg"

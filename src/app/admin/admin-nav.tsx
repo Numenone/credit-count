@@ -13,9 +13,13 @@ export function AdminNav() {
   const pathname = usePathname();
 
   return (
+    // No overflow-x here. Setting it makes the browser compute overflow-y as
+    // auto too, and the active-tab indicator sits at -bottom-px — just outside
+    // the box — which was enough to produce a stray vertical scrollbar. Three
+    // tabs wrap perfectly well instead.
     <nav
       aria-label="Admin sections"
-      className="flex gap-1 overflow-x-auto border-b border-[var(--line)]"
+      className="flex flex-wrap gap-1 border-b border-[var(--line)]"
     >
       {TABS.map((tab) => {
         const active = pathname === tab.href;

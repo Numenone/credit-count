@@ -17,8 +17,13 @@ function isPublic(pathname: string) {
  * stops a signed-out or unauthorised caller reading data. Removing this file would
  * make the app ugly, not insecure.
  */
-export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+export async function updateSession(request: NextRequest, nonce?: string) {
+  // The nonce travels to the render on a request header, which is how a server
+  // component gets at a value that only exists per request.
+  const requestHeaders = new Headers(request.headers);
+  if (nonce) requestHeaders.set("x-nonce", nonce);
+
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,7 +37,7 @@ export async function updateSession(request: NextRequest) {
           for (const { name, value } of cookiesToSet) {
             request.cookies.set(name, value);
           }
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: requestHeaders } });
           for (const { name, value, options } of cookiesToSet) {
             response.cookies.set(name, value, options);
           }
@@ -59,6 +64,28 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
+  }
+
+  // Admin routes are gated HERE, before anything renders.
+  //
+  // requireAdmin() in the admin layout redirects too, but Next renders the page
+  // concurrently with the layout and flushes what it produced: a redirect
+  // response for /admin still carried the fully-rendered admin page in its RSC
+  // payload, catalogue statistics and all. Redirecting from the proxy means the
+  // page component never runs. The layout check stays as a second layer.
+  if (user && pathname.startsWith("/admin")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle<{ role: string }>();
+
+    if (profile?.role !== "admin") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
   }
 
   if (user && (pathname === "/login" || pathname === "/signup")) {

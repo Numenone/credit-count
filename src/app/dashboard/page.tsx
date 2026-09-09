@@ -28,14 +28,12 @@ import {
 export const metadata: Metadata = { title: "Dashboard" };
 
 /**
- * PostgREST `or=` filters are comma/parenthesis delimited, so those characters
- * are stripped from user input before interpolation. ILIKE wildcards are removed
- * rather than escaped: PostgREST has no portable escape for them inside `or=`,
- * and a search box that silently accepts `%` as "match anything" is a surprise,
- * not a feature.
+ * The search term goes to a Postgres function as a bound parameter, so it needs
+ * no character stripping — there is no string for it to break out of. This only
+ * bounds the length, so nobody can make the database scan a megabyte-long term.
  */
 function sanitiseQuery(raw: string) {
-  return raw.replace(/[(),*]/g, " ").replace(/[%_\\]/g, "").trim().slice(0, 60);
+  return raw.trim().slice(0, 60);
 }
 
 function monthName(month: string) {
@@ -65,27 +63,26 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     .order("created_at", { ascending: false })
     .returns<RideWithCoaster[]>();
 
-  const cataloguePromise = (
-    query
-      ? supabase
-          .from("coasters")
-          .select(COASTER_COLUMNS)
-          .or(`name.ilike.%${query}%,park.ilike.%${query}%,country.ilike.%${query}%`)
-          .order("name")
-          .limit(8)
-      : supabase
-          .from("coasters")
-          .select(COASTER_COLUMNS)
-          .order("created_at", { ascending: false })
-          .order("name")
-          .limit(5)
-  ).returns<Coaster[]>();
+  // Searching goes through search_coasters(), which takes the term as a bound
+  // parameter and escapes ILIKE's own wildcards. Browsing needs no term at all.
+  // No .returns<Coaster[]>() on the rpc branch: supabase-js types rpc() as
+  // returning a single value and rejects an array cast, so the shape is
+  // asserted once after both branches resolve.
+  const cataloguePromise = query
+    ? supabase.rpc("search_coasters", { term: query, max_results: 8 })
+    : supabase
+        .from("coasters")
+        .select(COASTER_COLUMNS)
+        .order("created_at", { ascending: false })
+        .order("name")
+        .limit(5);
 
-  const [{ data: rides }, { data: catalogue }] = await Promise.all([
+  const [{ data: rides }, catalogueResult] = await Promise.all([
     ridesPromise,
     cataloguePromise,
   ]);
 
+  const catalogue = (catalogueResult.data ?? []) as Coaster[];
   const rideList = rides ?? [];
   const stats = computeStats(rideList);
   const milestones = computeMilestones(stats);

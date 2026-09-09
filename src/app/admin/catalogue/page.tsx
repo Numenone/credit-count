@@ -9,8 +9,9 @@ import { SearchIcon } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Catalogue" };
 
+/** Bound parameter downstream, so this only caps the length. */
 function sanitiseQuery(raw: string) {
-  return raw.replace(/[(),*]/g, " ").replace(/[%_\\]/g, "").trim().slice(0, 60);
+  return raw.trim().slice(0, 60);
 }
 
 export default async function AdminCataloguePage({ searchParams }: PageProps<"/admin/catalogue">) {
@@ -20,15 +21,18 @@ export default async function AdminCataloguePage({ searchParams }: PageProps<"/a
   const rawQuery = typeof params.q === "string" ? params.q : "";
   const query = sanitiseQuery(rawQuery);
 
-  let request = supabase.from("coasters").select(COASTER_COLUMNS, { count: "exact" });
-  if (query) {
-    request = request.or(
-      `name.ilike.%${query}%,park.ilike.%${query}%,country.ilike.%${query}%,manufacturer.ilike.%${query}%`,
-    );
-  }
+  // The filtered list comes from the parameterized search function; the headline
+  // total is a separate head-count, because the function returns rows, not a count.
+  const listQuery = query
+    ? supabase.rpc("search_coasters", { term: query, max_results: 200 })
+    : supabase.from("coasters").select(COASTER_COLUMNS).order("name").limit(200);
 
-  const { data, count } = await request.order("name").limit(200).returns<Coaster[]>();
-  const coasters = data ?? [];
+  const [list, { count }] = await Promise.all([
+    listQuery,
+    supabase.from("coasters").select("id", { count: "exact", head: true }),
+  ]);
+
+  const coasters = (list.data ?? []) as Coaster[];
 
   return (
     <CoasterDetailsProvider unitSystem={profile.unit_system}>

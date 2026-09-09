@@ -11,7 +11,15 @@ import { COASTER_COLUMNS, type RideWithCoaster } from "@/lib/database.types";
  */
 function csvCell(value: unknown) {
   if (value == null) return "";
-  const text = String(value);
+  let text = String(value);
+
+  // Formula injection. A ride note beginning =, +, - or @ is executed as a
+  // formula when the file is opened in Excel, Sheets or LibreOffice — which
+  // turns "export your own data" into a way to attack whoever you send it to.
+  // A leading apostrophe makes the cell text, and the tab covers the variant
+  // where a leading whitespace character is stripped before evaluation.
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+
   // Quote anything that could break the row, and double any embedded quotes.
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
