@@ -45,11 +45,23 @@ export function MascotChat({
   const scroller = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
 
+  // What had focus before the dialog opened, so it can be given back.
+  const opener = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
+
+    if (open && !dialog.open) {
+      opener.current = document.activeElement as HTMLElement | null;
+      dialog.showModal();
+    }
+    if (!open && dialog.open) {
+      dialog.close();
+      // Without this, focus lands on <body> and a keyboard user has to tab
+      // from the top of the page to get back to where they were.
+      opener.current?.focus?.();
+    }
   }, [open]);
 
   // Keep the newest turn in view as the conversation grows. Writing to the DOM
@@ -100,6 +112,14 @@ export function MascotChat({
             composer into this area, so the newest message has to clear her. */}
         <div
           ref={scroller}
+          // A transcript that only updates visually has not answered anyone
+          // using a screen reader. Polite rather than assertive: her reply is
+          // worth hearing, not worth interrupting whatever is being read.
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions"
+          aria-busy={pending}
+          aria-label="Conversation with Rusty"
           className="flex-1 space-y-4 overflow-y-auto px-5 pb-5 pt-5 sm:pb-[13.5rem]"
         >
           {turns.length === 0 && (
@@ -131,6 +151,9 @@ export function MascotChat({
             >
               <div
                 className="max-w-[85%] rounded-[var(--radius)] px-3.5 py-2.5 text-sm leading-relaxed"
+                // Alignment tells a sighted reader who is speaking and tells
+                // everyone else nothing.
+                aria-label={turn.role === "user" ? "You said" : "Rusty said"}
                 style={
                   turn.role === "user"
                     ? { backgroundColor: "var(--brand)", color: "var(--brand-ink)" }
@@ -148,6 +171,7 @@ export function MascotChat({
 
           {pending && (
             <div className="flex justify-start">
+              <span className="sr-only">Rusty is thinking</span>
               <div className="flex items-center gap-1.5 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-3">
                 {[0, 1, 2].map((i) => (
                   <span

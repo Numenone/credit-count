@@ -573,6 +573,100 @@ console.log("\nForged sessions");
   );
 }
 
+/* ------------------------------------------------------ device revocation -- */
+// Signing a device out has to take effect on its NEXT request, not whenever
+// its token happens to expire. The token below stays cryptographically valid
+// throughout — only the session behind it is gone — so this exercises the
+// revocation check specifically, and on both surfaces, because it once worked
+// on pages and did nothing to the API.
+console.log("\nDevice revocation");
+{
+  const signIn = async () => {
+    const client = createClient(SUPABASE_URL, ANON_KEY);
+    const { data } = await client.auth.signInWithPassword({
+      email: process.env.E2E_ENTHUSIAST_EMAIL,
+      password: process.env.E2E_ENTHUSIAST_PASSWORD,
+    });
+    const encoded =
+      "base64-" + Buffer.from(JSON.stringify(data.session), "utf8").toString("base64url");
+    const name = `sb-${PROJECT_REF}-auth-token`;
+    let cookie = `${name}=${encoded}`;
+    if (encoded.length > CHUNK) {
+      const parts = [];
+      for (let i = 0; i * CHUNK < encoded.length; i++) {
+        parts.push(`${name}.${i}=${encoded.slice(i * CHUNK, (i + 1) * CHUNK)}`);
+      }
+      cookie = parts.join("; ");
+    }
+    return {
+      client,
+      cookie,
+      sessionId: JSON.parse(
+        Buffer.from(data.session.access_token.split(".")[1], "base64url").toString("utf8"),
+      ).session_id,
+    };
+  };
+
+  const keeper = await signIn();
+  const doomed = await signIn();
+
+  check(
+    "both sessions start out working",
+    (await request("/api/v1/me", { cookie: doomed.cookie })).status === 200 &&
+      (await request("/api/v1/me", { cookie: keeper.cookie })).status === 200,
+  );
+
+  const listed = await keeper.client.rpc("my_devices");
+  check(
+    "each session can see the other in its device list",
+    (listed.data ?? []).some((d) => d.session_id === doomed.sessionId),
+  );
+
+  const { data: revoked } = await keeper.client.rpc("revoke_device", {
+    p_session_id: doomed.sessionId,
+  });
+  check("one device can sign another out", revoked === true);
+
+  const api = await request("/api/v1/me", { cookie: doomed.cookie });
+  check("the revoked session is refused by the API", api.status === 401, String(api.status));
+
+  // The page redirects from inside the render rather than from the proxy, and a
+  // streaming render cannot send a 307 once it has begun flushing. So the
+  // status is not the property worth asserting — the absence of the signed-in
+  // page is.
+  const page = await request("/dashboard", { cookie: doomed.cookie });
+  check(
+    "the revoked session gets no dashboard",
+    !/Log a ride|Ask Rusty|Your credits/.test(page.text),
+    `${page.status}`,
+  );
+  check(
+    "and no trace of the account in the payload",
+    !/Ellie Sharpe/.test(page.text),
+  );
+
+  const survivor = await request("/api/v1/me", { cookie: keeper.cookie });
+  check("the other session is untouched", survivor.status === 200, String(survivor.status));
+
+  // Ownership is the whole point of revoke_device: without its user_id check,
+  // any signed-in user could end anyone's session.
+  const rivalClient = createClient(SUPABASE_URL, ANON_KEY);
+  await rivalClient.auth.signInWithPassword({
+    email: process.env.E2E_SECOND_USER_EMAIL,
+    password: process.env.E2E_SECOND_USER_PASSWORD,
+  });
+  const { data: stolen } = await rivalClient.rpc("revoke_device", {
+    p_session_id: keeper.sessionId,
+  });
+  check("another user cannot revoke someone else's session", stolen === false);
+  check(
+    "and that session still works",
+    (await request("/api/v1/me", { cookie: keeper.cookie })).status === 200,
+  );
+
+  await keeper.client.rpc("revoke_device", { p_session_id: keeper.sessionId });
+}
+
 /* --------------------------------------------------------- llm dashboard -- */
 // The usage console is the one admin page that renders money. Two things have
 // to hold: an enthusiast never sees it, and an admin sees real figures rather

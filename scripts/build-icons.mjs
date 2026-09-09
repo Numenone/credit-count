@@ -67,6 +67,26 @@ function flatten() {
 
 const POLYLINE = flatten();
 
+/**
+ * The mark's real extent, including the stroke's own width.
+ *
+ * Framing by the nominal 24-unit box wastes the empty margin the path happens
+ * to have — at 16 pixels that left the mark seven pixels tall inside a sixteen
+ * pixel square, and a favicon nobody can make out is decoration. Fitting the
+ * ink instead means every size uses the room it has.
+ */
+const INK = POLYLINE.reduce(
+  (box, [x, y]) => ({
+    minX: Math.min(box.minX, x - STROKE / 2),
+    minY: Math.min(box.minY, y - STROKE / 2),
+    maxX: Math.max(box.maxX, x + STROKE / 2),
+    maxY: Math.max(box.maxY, y + STROKE / 2),
+  }),
+  { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+);
+const INK_W = INK.maxX - INK.minX;
+const INK_H = INK.maxY - INK.minY;
+
 /** Distance from a point to a line segment. */
 function distanceToSegment(px, py, [ax, ay], [bx, by]) {
   const dx = bx - ax;
@@ -85,15 +105,15 @@ function distanceToSegment(px, py, [ax, ay], [bx, by]) {
  * a hard-edged diagonal is a staircase, and a staircase is what makes a
  * favicon look like a mistake.
  */
-function coverage(px, py, scale, pad) {
+function coverage(px, py, scale, offsetX, offsetY) {
   const half = STROKE / 2;
   let hits = 0;
 
   for (let sy = 0; sy < 3; sy++) {
     for (let sx = 0; sx < 3; sx++) {
       // Sample at thirds of the pixel, converted back into mark space.
-      const x = (px + (sx + 0.5) / 3 - pad) / scale;
-      const y = (py + (sy + 0.5) / 3 - pad) / scale;
+      const x = (px + (sx + 0.5) / 3 - offsetX) / scale;
+      const y = (py + (sy + 0.5) / 3 - offsetY) / scale;
 
       let nearest = Infinity;
       for (let i = 1; i < POLYLINE.length; i++) {
@@ -106,10 +126,13 @@ function coverage(px, py, scale, pad) {
   return hits / 9;
 }
 
-function render(size, { background, ink, radius }) {
-  // The mark keeps a margin so it is not flush to the tab's edge.
-  const pad = Math.round(size * 0.16);
-  const scale = (size - pad * 2) / VIEW;
+function render(size, { background, ink, radius, margin = 0.11 }) {
+  // A margin so the mark is not flush to the tab's edge, then the ink centred
+  // in whatever is left — fitted on its longer side so it never overflows.
+  const usable = size * (1 - margin * 2);
+  const scale = Math.min(usable / INK_W, usable / INK_H);
+  const offsetX = (size - INK_W * scale) / 2 - INK.minX * scale;
+  const offsetY = (size - INK_H * scale) / 2 - INK.minY * scale;
   const pixels = Buffer.alloc(size * size * 4);
 
   for (let y = 0; y < size; y++) {
@@ -127,7 +150,7 @@ function render(size, { background, ink, radius }) {
         }
       }
 
-      const markAlpha = coverage(x, y, scale, pad);
+      const markAlpha = coverage(x, y, scale, offsetX, offsetY);
 
       // The mark over the background, both premultiplied into straight RGBA.
       const r = background[0] * (1 - markAlpha) + ink[0] * markAlpha;
@@ -241,7 +264,7 @@ writeFileSync("src/app/favicon.ico", ico(icoEntries));
 const apple = 180;
 writeFileSync(
   "src/app/apple-icon.png",
-  png(apple, render(apple, { background: BRAND, ink: CREAM, radius: 0 })),
+  png(apple, render(apple, { background: BRAND, ink: CREAM, radius: 0, margin: 0.2 })),
 );
 
 console.log(

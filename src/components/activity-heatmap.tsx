@@ -97,6 +97,22 @@ export function ActivityHeatmap({
     return Math.min(3, Math.floor(((count - 1) / max) * 4));
   };
 
+  // The three facts the picture is actually carrying.
+  const active = columns.flat().filter((c) => !c.inFuture && c.count > 0);
+  const busiest = active.reduce<(typeof active)[number] | null>(
+    (best, cell) => (!best || cell.count > best.count ? cell : best),
+    null,
+  );
+  const summary =
+    total === 0
+      ? "No rides logged in the last 12 months."
+      : `Riding activity for the last 12 months: ${total} ${total === 1 ? "ride" : "rides"} ` +
+        `across ${active.length} ${active.length === 1 ? "day" : "days"}` +
+        (busiest
+          ? `. Busiest was ${label(busiest.date)}, with ${busiest.count} ` +
+            `${busiest.count === 1 ? "ride" : "rides"}.`
+          : ".");
+
   return (
     <section className="card p-5">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
@@ -120,7 +136,16 @@ export function ActivityHeatmap({
             })}
           </div>
 
-          <div className="mt-1 flex gap-[3px]">
+          {/* One image with a summary, not 365 of them.
+              Labelling every cell is technically complete and practically
+              useless: it turns a glance into a year of cell-by-cell
+              navigation. The grid says what it shows, the busiest days are
+              named, and the rest is decoration. */}
+          <div
+            className="mt-1 flex gap-[3px]"
+            role="img"
+            aria-label={summary}
+          >
             <div className="flex w-[23px] shrink-0 flex-col gap-[3px] pr-1.5 text-[0.62rem] leading-[11px] text-[var(--ink-3)]">
               {["", "Mon", "", "Wed", "", "Fri", ""].map((d, i) => (
                 <span key={i} className="h-[11px]">
@@ -136,8 +161,14 @@ export function ActivityHeatmap({
                   return (
                     <div
                       key={cell.date}
-                      role="img"
-                      aria-label={`${cell.count} ${cell.count === 1 ? "ride" : "rides"} on ${label(cell.date)}`}
+                      aria-hidden
+                      // Kept for a mouse: the hover tooltip is a bonus, and
+                      // title gives the same thing to a slow pointer.
+                      title={
+                        cell.inFuture
+                          ? undefined
+                          : `${cell.count} ${cell.count === 1 ? "ride" : "rides"} on ${label(cell.date)}`
+                      }
                       onMouseEnter={(e) =>
                         !cell.inFuture &&
                         setHovered({
